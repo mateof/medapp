@@ -1,0 +1,17 @@
+tr {
+    td {
+        span {
+            display: inline-block;
+            width: 380px;
+            white-space: nowrap;
+            overflow: hidden !important;
+            text-overflow: ellipsis;
+        }
+    }
+}
+
+@media only screen and (max-width: 600px) {
+    body {
+        background-color: lightblue;
+    }
+}
