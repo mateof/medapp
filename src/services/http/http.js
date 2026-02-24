@@ -9,9 +9,8 @@ import axios from 'axios'
 const UrlBase = "https://cima.aemps.es/cima/rest";
 
 export function resolveCimaUrl(url) {
-  return import.meta.env.DEV
-    ? url.replace('https://cima.aemps.es', '')
-    : url
+  if (import.meta.env.DEV) return url.replace('https://cima.aemps.es', '')
+  return `https://corsproxy.io/?${encodeURIComponent(url)}`
 }
 
 export async function getDrugsByName(name) {
