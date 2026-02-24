@@ -10,7 +10,7 @@ const UrlBase = "https://cima.aemps.es/cima/rest";
 
 export function resolveCimaUrl(url) {
   if (import.meta.env.DEV) return url.replace('https://cima.aemps.es', '')
-  return `https://corsproxy.io/?${encodeURIComponent(url)}`
+  return `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
 }
 
 export async function getDrugsByName(name) {
