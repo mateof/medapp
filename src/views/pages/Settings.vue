@@ -149,8 +149,8 @@
               Proxy CORS
             </h3>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Configura un proxy CORS para poder ver prospectos y fichas técnicas de CIMA directamente en la app.
-              Sin proxy, los documentos se abrirán en una pestaña nueva.
+              Configura un proxy CORS para que la IA pueda descargar los prospectos de CIMA y usarlos al analizar interacciones.
+              Sin proxy, el análisis se realizará sin información de prospectos.
             </p>
 
             <v-text-field
@@ -209,10 +209,10 @@
             </div>
 
             <v-alert v-if="hasCorsProxyConfigured" type="success" variant="tonal" density="compact">
-              Proxy CORS configurado. Los documentos de CIMA se mostrarán directamente en la app.
+              Proxy CORS configurado. Los prospectos se descargarán para incluirlos en el análisis de interacciones con IA.
             </v-alert>
             <v-alert v-else type="info" variant="tonal" density="compact">
-              Sin proxy configurado. Los documentos se abrirán en una pestaña nueva.
+              Sin proxy configurado. Las interacciones se analizarán sin información de prospectos.
             </v-alert>
 
           </v-card-text>

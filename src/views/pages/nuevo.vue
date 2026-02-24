@@ -83,8 +83,8 @@
                     color="primary"
                     size="small"
                     prepend-icon="mdi-file-document-outline"
-                    :loading="loadingProspecto"
-                    @click="showProspecto"
+                    :href="prospectoUrl"
+                    target="_blank"
                   >
                     Ver prospecto
                   </v-btn>
@@ -176,16 +176,6 @@
       El medicamento ya existe en tu lista
     </v-snackbar>
 
-    <dialogo
-      :showDialog="showDialogo"
-      :can-fullscreen="true"
-      :is-iframe="true"
-      :title="prospecto.titulo"
-      :show-accept-button="false"
-      :texto="prospecto.texto"
-      :type="'info'"
-      @accept="showDialogo = false"
-    />
   </v-container>
 </template>
 
@@ -193,12 +183,11 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getDrugsByName, getStringUrl, resolveCimaUrl } from '@/services/http/http'
+import { getDrugsByName } from '@/services/http/http'
 import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { checkInteracciones } from '@/services/ai/gemini'
 import interacciones from '@/components/commonComponents/medicamentos/interacciones.vue'
-import dialogo from '@/components/commonComponents/modals/dialog.vue'
 
 const router = useRouter()
 const { smAndDown } = useDisplay()
@@ -213,11 +202,6 @@ const duplicateError = ref(false)
 const chips = ref([])
 const itemsLabel = ref([])
 let searchTimerId = null
-
-// Prospecto
-const showDialogo = ref(false)
-const loadingProspecto = ref(false)
-const prospecto = ref({ texto: '', titulo: '' })
 
 // Interacciones
 const showInteraccionDialog = ref(false)
@@ -392,21 +376,6 @@ function cancelAdd() {
   showInteraccionDialog.value = false
   interaccionResult.value = null
   interaccionError.value = null
-}
-
-async function showProspecto() {
-  loadingProspecto.value = true
-  try {
-    const proxyUrl = resolveCimaUrl(prospectoUrl.value)
-    const html = await getStringUrl(proxyUrl)
-    prospecto.value.texto = html
-    prospecto.value.titulo = 'Prospecto — ' + selectedNombre.value
-    showDialogo.value = true
-  } catch {
-    // Si falla, abrir en pestaña nueva como fallback
-    window.open(prospectoUrl.value, '_blank')
-  }
-  loadingProspecto.value = false
 }
 
 async function doAdd() {

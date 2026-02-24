@@ -142,7 +142,7 @@ Sé preciso y basa tu análisis en evidencia farmacológica.`
 }
 
 async function fetchProspectos(medicamentos) {
-    if (!hasCorsProxy()) return []
+    if (!hasCorsProxy()) return [] // Sin proxy no se pueden descargar prospectos
     const prospectos = []
     for (const med of medicamentos) {
         const docs = med.data?.docs

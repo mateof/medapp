@@ -217,10 +217,10 @@
                   </template>
                   <v-list-item-title>{{ file.tipoString }}</v-list-item-title>
                   <template #append>
-                    <v-btn v-if="file.hasUrlHtml" icon variant="text" @click="showProspectoDialog(file.urlHtml, file.tipoString)">
+                    <v-btn v-if="file.hasUrlHtml" icon variant="text" @click="openUrl(file.urlHtml)">
                       <v-icon>mdi-eye</v-icon>
                     </v-btn>
-                    <v-btn v-if="file.hasUrl" icon variant="text" @click="openPDF(file.url)">
+                    <v-btn v-if="file.hasUrl" icon variant="text" @click="openUrl(file.url)">
                       <v-icon>mdi-download</v-icon>
                     </v-btn>
                   </template>
@@ -236,16 +236,6 @@
       </v-row>
     </template>
 
-    <dialogo
-      :showDialog="showDialogo"
-      :can-fullscreen="true"
-      :is-iframe="true"
-      :title="prospecto.titulo"
-      :show-accept-button="false"
-      :texto="prospecto.texto"
-      :type="'info'"
-      @accept="showDialogo = false"
-    />
   </v-container>
 </template>
 
@@ -255,10 +245,9 @@ import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
-import { getMedicamentoByIdFromUrl, getStringUrl, resolveCimaUrl } from '@/services/http/http'
+import { getMedicamentoByIdFromUrl } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
 import { checkInteracciones } from '@/services/ai/gemini'
-import dialogo from '@/components/commonComponents/modals/dialog.vue'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const route = useRoute()
@@ -270,8 +259,6 @@ const psum = ref(false)
 const presentaciones = ref([])
 const loaded = ref(false)
 const files = ref([])
-const prospecto = ref({ texto: '', titulo: '' })
-const showDialogo = ref(false)
 const hasApiKey = ref(false)
 const checkingInteracciones = ref(false)
 const interaccionResult = ref(null)
@@ -392,21 +379,8 @@ async function runInteractionCheck() {
   checkingInteracciones.value = false
 }
 
-async function showProspectoDialog(url, titulo) {
-  try {
-    const proxyUrl = resolveCimaUrl(url)
-    const html = await getStringUrl(proxyUrl)
-    prospecto.value.texto = html
-    prospecto.value.titulo = titulo
-    showDialogo.value = true
-  } catch {
-    // Si falla, abrir en pestaña nueva como fallback
-    window.open(url, '_blank')
-  }
-}
-
-function openPDF(urlPdf) {
-  window.open(urlPdf, '_blank')
+function openUrl(url) {
+  window.open(url, '_blank')
 }
 </script>
 
