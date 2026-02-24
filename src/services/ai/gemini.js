@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getStringUrl, resolveCimaUrl } from '../http/http'
+import { getStringUrl, resolveCimaUrl, hasCorsProxy } from '../http/http'
 import { useUiStore } from '@/stores/ui'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
@@ -142,6 +142,7 @@ Sé preciso y basa tu análisis en evidencia farmacológica.`
 }
 
 async function fetchProspectos(medicamentos) {
+    if (!hasCorsProxy()) return []
     const prospectos = []
     for (const med of medicamentos) {
         const docs = med.data?.docs

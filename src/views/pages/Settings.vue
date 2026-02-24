@@ -141,6 +141,80 @@
                 </v-timeline-item>
               </v-timeline>
             </v-card>
+            <v-divider class="my-6" />
+
+            <!-- PROXY CORS -->
+            <h3 class="text-h6 mb-4">
+              <v-icon class="mr-1">mdi-shield-link-variant</v-icon>
+              Proxy CORS
+            </h3>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              Configura un proxy CORS para poder ver prospectos y fichas técnicas de CIMA directamente en la app.
+              Sin proxy, los documentos se abrirán en una pestaña nueva.
+            </p>
+
+            <v-text-field
+              v-model="proxyUrlInput"
+              label="URL del proxy"
+              placeholder="http://mi-servidor:3010/proxy?url={url}"
+              prepend-icon="mdi-server-network"
+              variant="outlined"
+              hint="Usa {url} donde debe ir la URL de destino (se codificará automáticamente)"
+              persistent-hint
+              class="mb-2"
+            />
+
+            <div class="d-flex align-center ga-2 flex-wrap mb-4">
+              <span class="text-caption text-medium-emphasis mr-1">Plantillas:</span>
+              <v-chip
+                v-for="preset in proxyPresets"
+                :key="preset.label"
+                size="small"
+                variant="outlined"
+                @click="proxyUrlInput = preset.url"
+              >
+                {{ preset.label }}
+              </v-chip>
+            </div>
+
+            <div class="d-flex align-center ga-3 flex-wrap mb-4">
+              <v-btn color="primary" @click="saveProxy" prepend-icon="mdi-content-save">
+                Guardar
+              </v-btn>
+              <v-btn
+                variant="outlined"
+                @click="testProxy"
+                :loading="testingProxy"
+                :disabled="!proxyUrlInput"
+                prepend-icon="mdi-connection"
+              >
+                Probar
+              </v-btn>
+              <v-btn
+                v-if="proxyUrlInput"
+                variant="outlined"
+                color="error"
+                @click="deleteProxy"
+                prepend-icon="mdi-delete"
+              >
+                Eliminar
+              </v-btn>
+              <v-chip
+                v-if="proxyStatus !== null"
+                :color="proxyStatus ? 'success' : 'error'"
+                size="small"
+              >
+                {{ proxyStatus ? 'Proxy OK' : 'Error de conexión' }}
+              </v-chip>
+            </div>
+
+            <v-alert v-if="hasCorsProxyConfigured" type="success" variant="tonal" density="compact">
+              Proxy CORS configurado. Los documentos de CIMA se mostrarán directamente en la app.
+            </v-alert>
+            <v-alert v-else type="info" variant="tonal" density="compact">
+              Sin proxy configurado. Los documentos se abrirán en una pestaña nueva.
+            </v-alert>
+
           </v-card-text>
         </v-card>
       </v-col>
@@ -158,6 +232,7 @@ import { getSetting, setSetting } from '@/services/storage/store'
 import { testGeminiConnection, getAvailableModels } from '@/services/ai/gemini'
 import { encrypt } from '@/services/crypto'
 import { useUiStore } from '@/stores/ui'
+import { getCorsProxyUrl, setCorsProxyUrl, getStringUrl } from '@/services/http/http'
 
 const uiStore = useUiStore()
 
@@ -176,6 +251,18 @@ const availableModels = ref([])
 const selectedModel = ref(uiStore.geminiModel)
 
 const currentKey = () => uiStore.apiKey || apiKeyInput.value
+
+// Proxy CORS
+const proxyUrlInput = ref(getCorsProxyUrl())
+const testingProxy = ref(false)
+const proxyStatus = ref(null)
+const hasCorsProxyConfigured = ref(!!getCorsProxyUrl())
+
+const proxyPresets = [
+  { label: 'Proxy propio', url: 'http://localhost:3010/proxy?url={url}' },
+  { label: 'corsproxy.io', url: 'https://corsproxy.io/?{url}' },
+  { label: 'allorigins.win', url: 'https://api.allorigins.win/raw?url={url}' },
+]
 
 onMounted(async () => {
   const savedModel = await getSetting('gemini_model')
@@ -267,6 +354,43 @@ function formatTokens(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
   if (n >= 1000) return (n / 1000).toFixed(0) + 'K'
   return String(n)
+}
+
+function saveProxy() {
+  const url = proxyUrlInput.value.trim()
+  if (url && !url.includes('{url}')) {
+    showSnack('La URL debe contener {url} como marcador', 'warning')
+    return
+  }
+  setCorsProxyUrl(url)
+  hasCorsProxyConfigured.value = !!url
+  proxyStatus.value = null
+  showSnack(url ? 'Proxy CORS guardado' : 'Proxy CORS eliminado', 'success')
+}
+
+function deleteProxy() {
+  proxyUrlInput.value = ''
+  setCorsProxyUrl('')
+  hasCorsProxyConfigured.value = false
+  proxyStatus.value = null
+  showSnack('Proxy CORS eliminado', 'success')
+}
+
+async function testProxy() {
+  const url = proxyUrlInput.value.trim()
+  if (!url) return
+  testingProxy.value = true
+  proxyStatus.value = null
+  try {
+    const testUrl = url.replace('{url}', encodeURIComponent('https://cima.aemps.es/cima/rest/medicamentos?nombre=ibuprofeno'))
+    await getStringUrl(testUrl)
+    proxyStatus.value = true
+    showSnack('Proxy CORS funciona correctamente', 'success')
+  } catch {
+    proxyStatus.value = false
+    showSnack('No se pudo conectar al proxy', 'error')
+  }
+  testingProxy.value = false
 }
 
 function showSnack(text, color) {

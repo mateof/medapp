@@ -403,7 +403,8 @@ async function showProspecto() {
     prospecto.value.titulo = 'Prospecto — ' + selectedNombre.value
     showDialogo.value = true
   } catch {
-    // Si falla, ignorar silenciosamente
+    // Si falla, abrir en pestaña nueva como fallback
+    window.open(prospectoUrl.value, '_blank')
   }
   loadingProspecto.value = false
 }

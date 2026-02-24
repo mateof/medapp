@@ -393,11 +393,16 @@ async function runInteractionCheck() {
 }
 
 async function showProspectoDialog(url, titulo) {
-  const proxyUrl = resolveCimaUrl(url)
-  const html = await getStringUrl(proxyUrl)
-  prospecto.value.texto = html
-  prospecto.value.titulo = titulo
-  showDialogo.value = true
+  try {
+    const proxyUrl = resolveCimaUrl(url)
+    const html = await getStringUrl(proxyUrl)
+    prospecto.value.texto = html
+    prospecto.value.titulo = titulo
+    showDialogo.value = true
+  } catch {
+    // Si falla, abrir en pestaña nueva como fallback
+    window.open(url, '_blank')
+  }
 }
 
 function openPDF(urlPdf) {
