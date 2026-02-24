@@ -239,21 +239,26 @@ const prospectoUrl = computed(() => {
   return doc?.urlHtml || null
 })
 
+function fuzzyMatch(a, b) {
+  const al = a.toLowerCase()
+  const bl = b.toLowerCase()
+  if (al.includes(bl) || bl.includes(al)) return true
+  const fa = al.split(/[\s(,]/)[0]
+  const fb = bl.split(/[\s(,]/)[0]
+  return fa.length >= 3 && fb.length >= 3 && fa === fb
+}
+
 const filteredInteraccionResult = computed(() => {
   if (!interaccionResult.value || !model.value) return interaccionResult.value
-  const medName = model.value.nombre.toLowerCase()
+  const medName = model.value.nombre
   const enfermedades = chips.value.map(c => c.toLowerCase())
 
   const interacciones = (interaccionResult.value.interacciones || []).filter(inter =>
-    (inter.medicamentos || []).some(m =>
-      m.toLowerCase().includes(medName) || medName.includes(m.toLowerCase())
-    )
+    (inter.medicamentos || []).some(m => fuzzyMatch(m, medName))
   )
 
   const contraindicaciones = (interaccionResult.value.contraindicaciones_enfermedad || []).filter(ci => {
-    const matchMed = ci.medicamento && (
-      ci.medicamento.toLowerCase().includes(medName) || medName.includes(ci.medicamento.toLowerCase())
-    )
+    const matchMed = ci.medicamento && fuzzyMatch(ci.medicamento, medName)
     const matchEnf = ci.enfermedad && enfermedades.some(e =>
       ci.enfermedad.toLowerCase().includes(e) || e.includes(ci.enfermedad.toLowerCase())
     )

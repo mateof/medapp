@@ -180,9 +180,22 @@ export async function getInteracciones() {
     return all.sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
-export async function getInteraccionByMedId(medId) {
+export async function getInteraccionByMedId(medId, medName) {
     const all = await getInteracciones();
-    return all.find(i => (i.medIds || []).includes(medId)) || null;
+    return all.find(i => {
+        if ((i.medIds || []).includes(medId)) return true;
+        if (medName) {
+            const nameLower = medName.toLowerCase();
+            const firstWord = nameLower.split(/[\s(,]/)[0];
+            return (i.medNames || []).some(n => {
+                const nl = n.toLowerCase();
+                if (nl.includes(nameLower) || nameLower.includes(nl)) return true;
+                const fw = nl.split(/[\s(,]/)[0];
+                return fw.length >= 3 && firstWord.length >= 3 && fw === firstWord;
+            });
+        }
+        return false;
+    }) || null;
 }
 
 export async function getLatestInteraccion() {

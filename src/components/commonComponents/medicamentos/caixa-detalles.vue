@@ -311,14 +311,23 @@ const viaAdministracion = computed(() => {
 
 const dosisText = computed(() => medicamento.value?.data?.dosis || 'No disponible')
 
+function fuzzyMatch(a, b) {
+  const al = a.toLowerCase()
+  const bl = b.toLowerCase()
+  if (al.includes(bl) || bl.includes(al)) return true
+  const fa = al.split(/[\s(,]/)[0]
+  const fb = bl.split(/[\s(,]/)[0]
+  return fa.length >= 3 && fb.length >= 3 && fa === fb
+}
+
 const filteredInteraccionResult = computed(() => {
   if (!interaccionResult.value) return null
-  const medName = nombre.value.toLowerCase()
+  const medName = nombre.value
   const interacciones = (interaccionResult.value.interacciones || []).filter(inter =>
-    (inter.medicamentos || []).some(m => m.toLowerCase().includes(medName) || medName.includes(m.toLowerCase()))
+    (inter.medicamentos || []).some(m => fuzzyMatch(m, medName))
   )
   const contraindicaciones = (interaccionResult.value.contraindicaciones_enfermedad || []).filter(ci =>
-    ci.medicamento && (ci.medicamento.toLowerCase().includes(medName) || medName.includes(ci.medicamento.toLowerCase()))
+    ci.medicamento && fuzzyMatch(ci.medicamento, medName)
   )
   if (interacciones.length === 0 && contraindicaciones.length === 0) return null
   return {
@@ -339,7 +348,7 @@ onMounted(async () => {
 
   hasApiKey.value = !!uiStore.apiKey
 
-  const saved = await getInteraccionByMedId(medId)
+  const saved = await getInteraccionByMedId(medId, medicamento.value?.name)
   if (saved) {
     try {
       interaccionResult.value = JSON.parse(saved.detalle)
