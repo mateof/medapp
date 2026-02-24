@@ -8,6 +8,12 @@ import axios from 'axios'
 
 const UrlBase = "https://cima.aemps.es/cima/rest";
 
+export function resolveCimaUrl(url) {
+  return import.meta.env.DEV
+    ? url.replace('https://cima.aemps.es', '')
+    : url
+}
+
 export async function getDrugsByName(name) {
     let p = await axios
       .get(`${UrlBase}/medicamentos?nombre=${name}`);

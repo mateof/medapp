@@ -316,7 +316,7 @@ function getFoto(item) {
   if (item.data.fotos && item.data.fotos[0]?.url) {
     return item.data.fotos[0].url
   }
-  return '/img/med-placeholder.png'
+  return `${import.meta.env.BASE_URL}img/med-placeholder.png`
 }
 
 function hasProspecto(item) {

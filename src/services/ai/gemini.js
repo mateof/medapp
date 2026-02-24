@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { getStringUrl } from '../http/http'
+import { getStringUrl, resolveCimaUrl } from '../http/http'
 import { useUiStore } from '@/stores/ui'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
@@ -149,7 +149,7 @@ async function fetchProspectos(medicamentos) {
         const prospecto = docs.find(d => d.tipo === 2 && d.urlHtml)
         if (!prospecto) continue
         try {
-            const url = prospecto.urlHtml.replace('https://cima.aemps.es', '')
+            const url = resolveCimaUrl(prospecto.urlHtml)
             const html = await getStringUrl(url)
             const texto = stripHtml(html).slice(0, 4000)
             prospectos.push({ nombre: med.name || med.data?.nombre, texto })

@@ -255,7 +255,7 @@ import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
-import { getMedicamentoByIdFromUrl, getStringUrl } from '@/services/http/http'
+import { getMedicamentoByIdFromUrl, getStringUrl, resolveCimaUrl } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
 import { checkInteracciones } from '@/services/ai/gemini'
 import dialogo from '@/components/commonComponents/modals/dialog.vue'
@@ -282,7 +282,7 @@ const fotos = computed(() => {
   if (medicamento.value?.data?.fotos?.length) {
     return medicamento.value.data.fotos
   }
-  return [{ url: '/img/med-placeholder.png' }]
+  return [{ url: `${import.meta.env.BASE_URL}img/med-placeholder.png` }]
 })
 
 const nombre = computed(() => medicamento.value?.name || '')
@@ -393,7 +393,7 @@ async function runInteractionCheck() {
 }
 
 async function showProspectoDialog(url, titulo) {
-  const proxyUrl = url.replace('https://cima.aemps.es', '')
+  const proxyUrl = resolveCimaUrl(url)
   const html = await getStringUrl(proxyUrl)
   prospecto.value.texto = html
   prospecto.value.titulo = titulo

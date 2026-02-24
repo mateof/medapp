@@ -193,7 +193,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getDrugsByName, getStringUrl } from '@/services/http/http'
+import { getDrugsByName, getStringUrl, resolveCimaUrl } from '@/services/http/http'
 import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { checkInteracciones } from '@/services/ai/gemini'
@@ -238,7 +238,7 @@ const items = computed(() => {
 })
 
 // Vista previa del medicamento seleccionado
-const selectedFoto = computed(() => model.value?.fotos?.[0]?.url || '/img/med-placeholder.png')
+const selectedFoto = computed(() => model.value?.fotos?.[0]?.url || `${import.meta.env.BASE_URL}img/med-placeholder.png`)
 const selectedNombre = computed(() => model.value?.nombre || '')
 const selectedLab = computed(() => model.value?.labtitular || '')
 const selectedPA = computed(() => model.value?.vtm?.nombre || '')
@@ -397,7 +397,7 @@ function cancelAdd() {
 async function showProspecto() {
   loadingProspecto.value = true
   try {
-    const proxyUrl = prospectoUrl.value.replace('https://cima.aemps.es', '')
+    const proxyUrl = resolveCimaUrl(prospectoUrl.value)
     const html = await getStringUrl(proxyUrl)
     prospecto.value.texto = html
     prospecto.value.titulo = 'Prospecto — ' + selectedNombre.value
