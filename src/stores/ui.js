@@ -19,7 +19,7 @@ function clearSession() {
 export const useUiStore = defineStore('ui', () => {
   const saved = loadSession()
 
-  const sidebarDrawer = ref(null)
+  const sidebarDrawer = ref(window.innerWidth > 960)
   const customizerDrawer = ref(false)
   const sidebarColor = ref('white')
   const sidebarBg = ref('')

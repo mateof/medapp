@@ -19,7 +19,7 @@ export function hasCorsProxy() {
 export function resolveCimaUrl(url) {
   if (import.meta.env.DEV) return url.replace('https://cima.aemps.es', '')
   const proxy = getCorsProxyUrl()
-  if (!proxy) return url
+  if (!proxy) return url // Intento directo (funcionará si no hay bloqueo CORS)
   return proxy.replace('{url}', encodeURIComponent(url))
 }
 

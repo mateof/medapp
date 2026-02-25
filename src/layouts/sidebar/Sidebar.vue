@@ -3,6 +3,7 @@
     v-model="sidebarDrawer"
     :color="uiStore.sidebarColor"
     mobile-breakpoint="960"
+    :temporary="smAndDown"
     rail-width="70"
     :rail="!smAndDown && railMode"
     :expand-on-hover="!smAndDown && railMode"
@@ -90,14 +91,20 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useUiStore } from '@/stores/ui'
 import { generateInitialsAvatar, updateUser, userNameExists } from '@/services/storage/users'
 
 const router = useRouter()
+const route = useRoute()
 const uiStore = useUiStore()
 const { smAndDown } = useDisplay()
+
+// Cerrar sidebar en móvil al cambiar de ruta
+watch(() => route.path, () => {
+  if (smAndDown.value) uiStore.setSidebarDrawer(false)
+})
 
 const sidebarDrawer = computed({
   get: () => uiStore.sidebarDrawer,

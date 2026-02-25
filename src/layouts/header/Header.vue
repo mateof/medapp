@@ -3,7 +3,7 @@
     <v-app-bar-nav-icon
       @click="toggleSidebar"
     />
-    <v-app-bar-title class="d-flex align-center">
+    <v-app-bar-title class="d-flex align-center" style="cursor: pointer" @click="goTo('/medicamentos')">
       <img src="../../assets/MedApp-pills.png" height="28" class="mr-2" />
       <span class="font-weight-bold">MedApp</span>
     </v-app-bar-title>
@@ -193,8 +193,8 @@ import { exportUsers, downloadBackup, importBackup, readBackupFile } from '@/ser
 import { db } from '@/services/db'
 
 const router = useRouter()
-const { smAndDown } = useDisplay()
 const uiStore = useUiStore()
+const { smAndDown } = useDisplay()
 
 // --- Export ---
 const showExport = ref(false)

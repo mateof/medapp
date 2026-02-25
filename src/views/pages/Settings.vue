@@ -63,18 +63,53 @@
               <v-icon>mdi-information</v-icon> No hay API key configurada. Las interacciones no se comprobarán.
             </v-alert>
 
-            <!-- Selector de modelo -->
+            <!-- Modelo actual -->
+            <v-card variant="tonal" color="primary" class="mt-4 mb-4">
+              <v-card-text class="d-flex align-center">
+                <v-icon class="mr-2" size="small">mdi-robot-outline</v-icon>
+                <span class="text-subtitle-2 font-weight-bold">{{ selectedModelName }}</span>
+                <v-chip v-if="modelInfo?.version" size="x-small" class="ml-2">v{{ modelInfo.version }}</v-chip>
+                <v-spacer />
+                <v-btn
+                  v-if="availableModels.length > 0"
+                  variant="text"
+                  size="small"
+                  :icon="showModelSelect ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                  @click="showModelSelect = !showModelSelect"
+                />
+              </v-card-text>
+              <template v-if="modelInfo">
+                <v-divider />
+                <v-card-text class="pt-2 pb-3">
+                  <p v-if="modelInfo.description" class="text-caption text-medium-emphasis mb-3">
+                    {{ modelInfo.description }}
+                  </p>
+                  <div class="d-flex ga-4 flex-wrap">
+                    <div class="d-flex align-center">
+                      <v-icon size="x-small" class="mr-1">mdi-arrow-right-bold</v-icon>
+                      <span class="text-caption"><strong>Input:</strong> {{ formatTokens(modelInfo.inputTokenLimit) }} tokens</span>
+                    </div>
+                    <div class="d-flex align-center">
+                      <v-icon size="x-small" class="mr-1">mdi-arrow-left-bold</v-icon>
+                      <span class="text-caption"><strong>Output:</strong> {{ formatTokens(modelInfo.outputTokenLimit) }} tokens</span>
+                    </div>
+                  </div>
+                </v-card-text>
+              </template>
+            </v-card>
+
+            <!-- Selector de modelo (expandible) -->
             <v-select
-              v-if="availableModels.length > 0"
+              v-if="availableModels.length > 0 && showModelSelect"
               :model-value="selectedModel"
               @update:model-value="onModelChange"
               :items="availableModels"
               item-title="name"
               item-value="id"
-              label="Modelo de IA"
-              prepend-icon="mdi-robot-outline"
+              label="Cambiar modelo"
+              prepend-icon="mdi-swap-horizontal"
               variant="outlined"
-              class="mt-4"
+              class="mb-4"
               hint="Modelo que se usará para analizar interacciones"
               persistent-hint
             >
@@ -88,36 +123,6 @@
                 </v-list-item>
               </template>
             </v-select>
-
-            <!-- Info del modelo tras probar conexión -->
-            <v-card v-if="modelInfo" variant="tonal" color="primary" class="mt-4">
-              <v-card-text>
-                <div class="d-flex align-center mb-2">
-                  <v-icon class="mr-2" size="small">mdi-robot-outline</v-icon>
-                  <span class="text-subtitle-2 font-weight-bold">{{ modelInfo.name }}</span>
-                  <v-chip v-if="modelInfo.version" size="x-small" class="ml-2">v{{ modelInfo.version }}</v-chip>
-                </div>
-                <p v-if="modelInfo.description" class="text-caption text-medium-emphasis mb-3">
-                  {{ modelInfo.description }}
-                </p>
-                <div class="d-flex ga-4 flex-wrap">
-                  <div class="d-flex align-center">
-                    <v-icon size="x-small" class="mr-1">mdi-arrow-right-bold</v-icon>
-                    <span class="text-caption"><strong>Input:</strong> {{ formatTokens(modelInfo.inputTokenLimit) }} tokens</span>
-                  </div>
-                  <div class="d-flex align-center">
-                    <v-icon size="x-small" class="mr-1">mdi-arrow-left-bold</v-icon>
-                    <span class="text-caption"><strong>Output:</strong> {{ formatTokens(modelInfo.outputTokenLimit) }} tokens</span>
-                  </div>
-                </div>
-                <v-alert type="info" variant="outlined" density="compact" class="mt-3">
-                  <span class="text-caption">
-                    La API de Gemini no permite consultar la cuota ni el uso restante con una API key.
-                    Puedes revisar tu consumo en <a href="https://aistudio.google.com" target="_blank" rel="noopener">Google AI Studio</a>.
-                  </span>
-                </v-alert>
-              </v-card-text>
-            </v-card>
 
             <v-divider class="my-4" />
 
@@ -227,7 +232,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { getSetting, setSetting } from '@/services/storage/store'
 import { testGeminiConnection, getAvailableModels } from '@/services/ai/gemini'
 import { encrypt } from '@/services/crypto'
@@ -249,6 +254,12 @@ const hasEncryptedKey = ref(false)
 const modelInfo = ref(null)
 const availableModels = ref([])
 const selectedModel = ref(uiStore.geminiModel)
+const showModelSelect = ref(false)
+
+const selectedModelName = computed(() => {
+  const found = availableModels.value.find(m => m.id === selectedModel.value)
+  return found?.name || selectedModel.value
+})
 
 const currentKey = () => uiStore.apiKey || apiKeyInput.value
 
@@ -269,6 +280,14 @@ onMounted(async () => {
   if (savedModel) {
     selectedModel.value = savedModel
     uiStore.setGeminiModel(savedModel)
+  }
+  const savedModels = await getSetting('gemini_available_models')
+  if (savedModels?.length) {
+    availableModels.value = savedModels
+    const current = savedModels.find(m => m.id === selectedModel.value)
+    if (current) {
+      modelInfo.value = { name: current.name, inputTokenLimit: current.inputTokenLimit, outputTokenLimit: current.outputTokenLimit }
+    }
   }
   const encrypted = await getSetting('gemini_api_key_encrypted')
   if (encrypted) {
@@ -329,6 +348,7 @@ async function testConnection() {
     availableModels.value = models.filter(m =>
       m.id.includes('gemini') && !m.id.includes('embedding') && !m.id.includes('aqa')
     )
+    await setSetting('gemini_available_models', JSON.parse(JSON.stringify(availableModels.value)))
   }
   snackbarText.value = result.message
   snackbarColor.value = result.ok ? 'success' : 'error'
