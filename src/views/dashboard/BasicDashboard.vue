@@ -145,6 +145,8 @@
                     <v-list-item
                       v-for="(inter, i) in latestDetalle.interacciones"
                       :key="i"
+                      rounded="lg"
+                      @click="openDetail('interaccion', inter)"
                     >
                       <template #prepend>
                         <v-chip
@@ -156,10 +158,13 @@
                           {{ inter.severidad }}
                         </v-chip>
                       </template>
-                      <v-list-item-title class="text-body-2">
+                      <v-list-item-title class="text-body-2 text-wrap">
                         {{ inter.medicamentos?.join(' ↔ ') }}
                       </v-list-item-title>
-                      <v-list-item-subtitle>{{ inter.tipo }}</v-list-item-subtitle>
+                      <v-list-item-subtitle class="text-truncate">{{ inter.tipo }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
                     </v-list-item>
                   </v-list>
                 </template>
@@ -171,14 +176,19 @@
                     <v-list-item
                       v-for="(ci, i) in latestDetalle.contraindicaciones_enfermedad"
                       :key="'ci-' + i"
+                      rounded="lg"
+                      @click="openDetail('contraindicacion', ci)"
                     >
                       <template #prepend>
                         <v-icon color="warning" size="small" class="mr-2">mdi-alert</v-icon>
                       </template>
-                      <v-list-item-title class="text-body-2">
+                      <v-list-item-title class="text-body-2 text-wrap">
                         {{ ci.medicamento }} — {{ ci.enfermedad }}
                       </v-list-item-title>
-                      <v-list-item-subtitle>{{ ci.detalle }}</v-list-item-subtitle>
+                      <v-list-item-subtitle class="text-truncate">{{ ci.detalle }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
                     </v-list-item>
                   </v-list>
                 </template>
@@ -216,8 +226,11 @@
           <v-card>
             <v-card-text class="pa-5">
               <h3 class="text-h6 font-weight-regular mb-4">Tendencia mensual</h3>
-              <div style="height: 280px">
+              <div v-if="hasMonthlyData" style="height: 280px">
                 <Line :data="lineData" :options="lineOptions" />
+              </div>
+              <div v-else class="text-center py-6 text-medium-emphasis">
+                No hay actividad registrada en los últimos 6 meses.
               </div>
             </v-card-text>
           </v-card>
@@ -264,7 +277,7 @@
               <v-list v-if="interaccionesHistory.length > 0" lines="two" density="compact">
                 <template v-for="(check, i) in interaccionesHistory.slice(0, 5)" :key="check.id || i">
                   <v-divider v-if="i !== 0" />
-                  <v-list-item>
+                  <v-list-item rounded="lg" @click="openCheckDetail(check)">
                     <template #prepend>
                       <v-chip
                         :color="severidadColor(check.severidad)"
@@ -275,12 +288,15 @@
                         {{ severidadLabel(check.severidad) }}
                       </v-chip>
                     </template>
-                    <v-list-item-title class="text-body-2">
-                      {{ check.resumen?.length > 80 ? check.resumen.slice(0, 80) + '...' : check.resumen }}
+                    <v-list-item-title class="text-body-2 text-wrap">
+                      {{ check.resumen }}
                     </v-list-item-title>
                     <v-list-item-subtitle>
                       {{ formatFecha(check.fecha) }} · {{ (check.medNames || []).length }} medicamentos
                     </v-list-item-subtitle>
+                    <template #append>
+                      <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                    </template>
                   </v-list-item>
                 </template>
               </v-list>
@@ -329,6 +345,39 @@
     <v-row v-if="loading" justify="center" class="mt-8">
       <v-progress-circular indeterminate color="primary" size="48" />
     </v-row>
+
+    <!-- Modal comprobación completa -->
+    <v-dialog v-model="showCheckDetail" max-width="1200" width="90%">
+      <v-card v-if="checkDetailData">
+        <v-card-text>
+          <div class="d-flex align-center flex-wrap ga-2 mb-3">
+            <v-chip :color="severidadColor(checkDetailData.severidad)" size="small">
+              {{ checkDetailData.severidad }}
+            </v-chip>
+            <span class="text-caption text-medium-emphasis">{{ formatFecha(checkDetailCheck?.fecha) }}</span>
+          </div>
+          <div class="d-flex flex-wrap ga-1 mb-3">
+            <v-chip
+              v-for="name in (checkDetailCheck?.medNames || [])"
+              :key="name"
+              size="x-small"
+              color="primary"
+              variant="tonal"
+            >{{ name }}</v-chip>
+          </div>
+          <interacciones-view :resultado="checkDetailData" />
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="showCheckDetail = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <InteraccionDetailDialog
+      v-model="showDetail"
+      :type="detailItem.type"
+      :data="detailItem.data"
+    />
   </v-container>
 </template>
 
@@ -358,6 +407,8 @@ import {
   getActividadPorMes,
   getInteracciones,
 } from '@/services/storage/store'
+import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/InteraccionDetailDialog.vue'
+import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 ChartJS.register(
   CategoryScale, LinearScale,
@@ -375,6 +426,27 @@ const actividades = ref([])
 const actividadMensual = ref([])
 const recentMeds = ref([])
 const lastActivity = ref(null)
+const showDetail = ref(false)
+const detailItem = ref({ type: '', data: null })
+
+function openDetail(type, data) {
+  detailItem.value = { type, data }
+  showDetail.value = true
+}
+
+const showCheckDetail = ref(false)
+const checkDetailData = ref(null)
+const checkDetailCheck = ref(null)
+
+function openCheckDetail(check) {
+  try {
+    checkDetailData.value = JSON.parse(check.detalle)
+    checkDetailCheck.value = check
+    showCheckDetail.value = true
+  } catch {
+    // Si no se puede parsear el detalle, no abrir
+  }
+}
 const interaccionesHistory = ref([])
 const latestInteraccion = ref(null)
 const latestDetalle = ref(null)
@@ -455,6 +527,10 @@ const doughnutOptions = {
     legend: { position: 'bottom', labels: { boxWidth: 12 } },
   },
 }
+
+const hasMonthlyData = computed(() =>
+  actividadMensual.value.some(m => m.adds > 0 || m.deletes > 0)
+)
 
 const lineData = computed(() => ({
   labels: actividadMensual.value.map(m => {

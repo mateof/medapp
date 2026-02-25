@@ -9,20 +9,25 @@
       {{ resultado.resumen }}
     </v-alert>
 
-    <v-expansion-panels v-if="resultado.interacciones?.length" class="mb-4">
-      <v-expansion-panel v-for="(inter, i) in resultado.interacciones" :key="'i-' + i">
-        <v-expansion-panel-title>
+    <v-list v-if="resultado.interacciones?.length" density="compact" class="mb-4">
+      <v-list-item
+        v-for="(inter, i) in resultado.interacciones"
+        :key="'i-' + i"
+        rounded="lg"
+        @click="openDetail('interaccion', inter)"
+      >
+        <template #prepend>
           <v-chip :color="severidadColor(inter.severidad)" size="small" class="mr-2">
             {{ inter.severidad }}
           </v-chip>
-          {{ inter.medicamentos.join(' ↔ ') }}
-        </v-expansion-panel-title>
-        <v-expansion-panel-text>
-          <p class="mb-2"><strong>Tipo:</strong> {{ inter.tipo }}</p>
-          <p><strong>Recomendación:</strong> {{ inter.recomendacion }}</p>
-        </v-expansion-panel-text>
-      </v-expansion-panel>
-    </v-expansion-panels>
+        </template>
+        <v-list-item-title class="text-wrap">{{ inter.medicamentos.join(' ↔ ') }}</v-list-item-title>
+        <v-list-item-subtitle class="text-truncate">{{ inter.tipo }}</v-list-item-subtitle>
+        <template #append>
+          <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+        </template>
+      </v-list-item>
+    </v-list>
 
     <div v-if="resultado.contraindicaciones_enfermedad?.length">
       <h4 class="text-subtitle-1 font-weight-bold mb-2">Contraindicaciones por enfermedad</h4>
@@ -30,12 +35,17 @@
         <v-list-item
           v-for="(ci, i) in resultado.contraindicaciones_enfermedad"
           :key="'ci-' + i"
+          rounded="lg"
+          @click="openDetail('contraindicacion', ci)"
         >
           <template #prepend>
             <v-icon color="warning" size="small">mdi-alert</v-icon>
           </template>
-          <v-list-item-title>{{ ci.medicamento }} → {{ ci.enfermedad }}</v-list-item-title>
-          <v-list-item-subtitle>{{ ci.detalle }}</v-list-item-subtitle>
+          <v-list-item-title class="text-wrap">{{ ci.medicamento }} → {{ ci.enfermedad }}</v-list-item-title>
+          <v-list-item-subtitle class="text-truncate">{{ ci.detalle }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+          </template>
         </v-list-item>
       </v-list>
     </div>
@@ -52,11 +62,18 @@
         Consulte siempre con su médico o farmacéutico y revise el prospecto de cada medicamento.
       </span>
     </v-alert>
+
+    <InteraccionDetailDialog
+      v-model="showDetail"
+      :type="detail.type"
+      :data="detail.data"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import InteraccionDetailDialog from './InteraccionDetailDialog.vue'
 
 const props = defineProps({
   resultado: {
@@ -64,6 +81,14 @@ const props = defineProps({
     required: true
   }
 })
+
+const showDetail = ref(false)
+const detail = ref({ type: '', data: null })
+
+function openDetail(type, data) {
+  detail.value = { type, data }
+  showDetail.value = true
+}
 
 const alertType = computed(() => {
   switch (props.resultado.severidad) {

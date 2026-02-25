@@ -104,38 +104,45 @@
                   {{ getFilteredData(item.id).resumen }}
                 </v-alert>
 
-                <div v-if="getFilteredData(item.id).interacciones.length > 0">
-                  <div
+                <v-list v-if="getFilteredData(item.id).interacciones.length > 0" density="compact" class="py-0">
+                  <v-list-item
                     v-for="(inter, i) in getFilteredData(item.id).interacciones"
                     :key="'inter-' + i"
-                    class="mb-3"
+                    rounded="lg"
+                    @click="openDetail('interaccion', inter)"
                   >
-                    <div class="d-flex align-center mb-1">
+                    <template #prepend>
                       <v-chip :color="severidadChipColor(inter.severidad)" size="x-small" class="mr-2">
                         {{ inter.severidad }}
                       </v-chip>
-                      <span class="text-body-2 font-weight-medium">{{ inter.medicamentos.join(' ↔ ') }}</span>
-                    </div>
-                    <div class="text-body-2 text-medium-emphasis ml-1">
-                      <div v-if="inter.tipo"><strong>Tipo:</strong> {{ inter.tipo }}</div>
-                      <div v-if="inter.recomendacion"><strong>Recomendación:</strong> {{ inter.recomendacion }}</div>
-                    </div>
-                  </div>
-                </div>
+                    </template>
+                    <v-list-item-title class="text-body-2 font-weight-medium text-wrap">{{ inter.medicamentos.join(' ↔ ') }}</v-list-item-title>
+                    <v-list-item-subtitle class="text-truncate">{{ inter.tipo }}</v-list-item-subtitle>
+                    <template #append>
+                      <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                    </template>
+                  </v-list-item>
+                </v-list>
 
                 <div v-if="getFilteredData(item.id).contraindicaciones.length > 0" class="mt-2">
                   <div class="text-subtitle-2 font-weight-bold mb-1">Contraindicaciones</div>
-                  <div
-                    v-for="(ci, i) in getFilteredData(item.id).contraindicaciones"
-                    :key="'ci-' + i"
-                    class="d-flex align-start mb-2"
-                  >
-                    <v-icon color="warning" size="small" class="mr-2 mt-1">mdi-alert</v-icon>
-                    <div>
-                      <div class="text-body-2 font-weight-medium">{{ ci.medicamento }} → {{ ci.enfermedad }}</div>
-                      <div class="text-caption text-medium-emphasis">{{ ci.detalle }}</div>
-                    </div>
-                  </div>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="(ci, i) in getFilteredData(item.id).contraindicaciones"
+                      :key="'ci-' + i"
+                      rounded="lg"
+                      @click="openDetail('contraindicacion', ci)"
+                    >
+                      <template #prepend>
+                        <v-icon color="warning" size="small">mdi-alert</v-icon>
+                      </template>
+                      <v-list-item-title class="text-body-2 font-weight-medium text-wrap">{{ ci.medicamento }} → {{ ci.enfermedad }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ ci.detalle }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
                 </div>
               </template>
 
@@ -149,6 +156,12 @@
 
       </v-col>
     </v-row>
+
+    <InteraccionDetailDialog
+      v-model="showDetail"
+      :type="detail.type"
+      :data="detail.data"
+    />
 
     <dialogo
       :showDialog="!!deletedId"
@@ -168,6 +181,7 @@ import { useDisplay } from 'vuetify'
 import { getMedicamentos, deleteMedicamentos, getInteracciones, deleteInteraccionesByMedId } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import dialogo from '@/components/commonComponents/modals/dialog.vue'
+import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/InteraccionDetailDialog.vue'
 
 const router = useRouter()
 const { smAndDown } = useDisplay()
@@ -180,8 +194,15 @@ const deletedId = ref(null)
 const deletedName = ref(null)
 const interaccionesMap = ref({})
 const interaccionesDataMap = ref({})
+const showDetail = ref(false)
+const detail = ref({ type: '', data: null })
 
 const isMobile = computed(() => smAndDown.value)
+
+function openDetail(type, data) {
+  detail.value = { type, data }
+  showDetail.value = true
+}
 
 onMounted(async () => {
   uiStore.setAddButton(true)

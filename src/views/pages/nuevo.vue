@@ -208,6 +208,7 @@ const showInteraccionDialog = ref(false)
 const checkingInteracciones = ref(false)
 const interaccionResult = ref(null)
 const interaccionError = ref(null)
+const pendingInteraccion = ref(null)
 
 const items = computed(() => {
   return entries.value
@@ -355,14 +356,14 @@ async function call() {
 
       const medIds = existingMeds.map(m => m.id)
       const medNames = [...existingMeds.map(m => m.name), model.value.nombre]
-      await saveInteraccion({
+      pendingInteraccion.value = {
         medIds,
         medNames,
         severidad: result.severidad,
         resumen: result.resumen,
         detalle: JSON.stringify(result),
         enfermedades: allEnfermedades
-      })
+      }
     } catch (e) {
       interaccionError.value = e.message || 'Error desconocido'
     }
@@ -381,10 +382,15 @@ function cancelAdd() {
   showInteraccionDialog.value = false
   interaccionResult.value = null
   interaccionError.value = null
+  pendingInteraccion.value = null
 }
 
 async function doAdd() {
   await addMedicamento(model.value, chips.value)
+  if (pendingInteraccion.value) {
+    await saveInteraccion(pendingInteraccion.value)
+    pendingInteraccion.value = null
+  }
   router.push('/medicamentos')
 }
 </script>
