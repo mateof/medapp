@@ -175,6 +175,7 @@ import { getAllUsers, verifyPin, setPinForUser, generateInitialsAvatar, deleteUs
 import { decrypt } from '@/services/crypto'
 import { useUiStore } from '@/stores/ui'
 import { db } from '@/services/db'
+import { AI_PROVIDERS } from '@/services/ai/providers'
 
 const router = useRouter()
 const uiStore = useUiStore()
@@ -251,8 +252,14 @@ async function selectUser(user) {
     loading.value = true
     uiStore.setActiveUser({ id: user.id, nombre: user.nombre, avatar: user.avatar })
     uiStore.setUserPin(cached.pin)
-    uiStore.setApiKey(cached.apiKey)
-    uiStore.setGeminiModel(cached.geminiModel)
+    // Restaurar todas las API keys del mapa cacheado
+    if (cached.apiKeys) {
+      for (const [prov, key] of Object.entries(cached.apiKeys)) {
+        uiStore.setApiKey(key, prov)
+      }
+    }
+    if (cached.aiProvider) uiStore.setAiProvider(cached.aiProvider)
+    if (cached.aiModel) uiStore.setAiModel(cached.aiModel)
     uiStore.setSessionReady(true)
     loading.value = false
     router.push('/medicamentos')
@@ -291,25 +298,41 @@ async function completeLogin(userPin) {
   uiStore.setActiveUser({ id: user.id, nombre: user.nombre, avatar: user.avatar })
   uiStore.setUserPin(userPin)
 
-  // Auto-decrypt API key if exists
+  // Load saved AI provider + model
   try {
     const prefix = `user_${user.id}_`
-    const row = await db.settings.get(`${prefix}gemini_api_key_encrypted`)
-    if (row?.value) {
-      const decrypted = await decrypt(row.value, userPin)
-      uiStore.setApiKey(decrypted)
+    const providerRow = await db.settings.get(`${prefix}ai_provider`)
+    const provider = providerRow?.value || 'gemini'
+    uiStore.setAiProvider(provider)
+
+    const modelRow = await db.settings.get(`${prefix}ai_model`) || await db.settings.get(`${prefix}gemini_model`)
+    if (modelRow?.value) uiStore.setAiModel(modelRow.value)
+
+    // Descifrar API keys de TODOS los proveedores configurados
+    for (const provId of Object.keys(AI_PROVIDERS)) {
+      try {
+        const keyRow = await db.settings.get(`${prefix}${provId}_api_key_encrypted`)
+        if (keyRow?.value) {
+          const decrypted = await decrypt(keyRow.value, userPin)
+          uiStore.setApiKey(decrypted, provId)
+        }
+      } catch {
+        // Key cifrada con PIN diferente o formato antiguo, ignorar
+      }
+    }
+
+    // Compat: migrar gemini_api_key_encrypted antiguo si no se encontró key para gemini
+    if (!uiStore.getApiKeyFor('gemini')) {
+      try {
+        const legacyRow = await db.settings.get(`${prefix}gemini_api_key_encrypted`)
+        if (legacyRow?.value) {
+          const decrypted = await decrypt(legacyRow.value, userPin)
+          uiStore.setApiKey(decrypted, 'gemini')
+        }
+      } catch { /* ignorar */ }
     }
   } catch {
-    // API key might have been encrypted with a different PIN (pre-migration)
-  }
-
-  // Load saved model
-  try {
-    const prefix = `user_${user.id}_`
-    const modelRow = await db.settings.get(`${prefix}gemini_model`)
-    if (modelRow?.value) uiStore.setGeminiModel(modelRow.value)
-  } catch {
-    // Ignore
+    // Error inesperado al cargar configuración
   }
 
   uiStore.setSessionReady(true)

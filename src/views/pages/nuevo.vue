@@ -186,7 +186,7 @@ import { useDisplay } from 'vuetify'
 import { getDrugsByName } from '@/services/http/http'
 import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
-import { checkInteracciones } from '@/services/ai/gemini'
+import { checkInteracciones } from '@/services/ai/ai'
 import interacciones from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const router = useRouter()

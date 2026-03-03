@@ -247,7 +247,7 @@ import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInterac
 import { useUiStore } from '@/stores/ui'
 import { getMedicamentoByIdFromUrl } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
-import { checkInteracciones } from '@/services/ai/gemini'
+import { checkInteracciones } from '@/services/ai/ai'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const route = useRoute()

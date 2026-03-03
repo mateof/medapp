@@ -50,12 +50,21 @@
       </v-list>
     </div>
 
+    <div v-if="resultado._ai" class="d-flex align-center ga-2 mt-4 mb-2">
+      <v-chip size="x-small" variant="tonal" color="primary" prepend-icon="mdi-robot-outline">
+        {{ resultado._ai.providerName || resultado._ai.provider }}
+      </v-chip>
+      <v-chip size="x-small" variant="outlined" prepend-icon="mdi-chip">
+        {{ resultado._ai.model }}
+      </v-chip>
+    </div>
+
     <v-alert
       type="warning"
       variant="outlined"
       density="compact"
       icon="mdi-stethoscope"
-      class="mt-4"
+      class="mt-2"
     >
       <span class="text-caption">
         Esta información se genera mediante inteligencia artificial con carácter orientativo y no sustituye en ningún caso el criterio de un profesional sanitario.

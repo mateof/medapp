@@ -1,31 +1,18 @@
 import axios from 'axios'
 import { getStringUrl, resolveCimaUrl } from '../http/http'
-import { useUiStore } from '@/stores/ui'
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
-const DEFAULT_MODEL = 'gemini-2.5-flash'
-
-function getModel() {
-    try {
-        return useUiStore().geminiModel || DEFAULT_MODEL
-    } catch {
-        return DEFAULT_MODEL
-    }
-}
 
 /**
- * Comprueba interacciones entre medicamentos usando Gemini API.
- * @param {string} apiKey - API key de Gemini
- * @param {Array} medicamentos - Array de medicamentos [{name, data, enfermedades}]
- * @param {Array} enfermedades - Etiquetas de enfermedades/síntomas del usuario
- * @returns {Object} { severidad, resumen, interacciones, contraindicaciones_enfermedad }
+ * Genera respuesta JSON usando Gemini API.
+ * @param {string} apiKey
+ * @param {string} prompt
+ * @param {string} model - ID del modelo (e.g. 'gemini-2.5-flash')
+ * @param {Object} provider - Config del proveedor (de providers.js)
  */
-export async function checkInteracciones(apiKey, medicamentos, enfermedades = []) {
-    const prospectos = await fetchProspectos(medicamentos)
-    const prompt = buildPrompt(medicamentos, enfermedades, prospectos)
-
-    const model = getModel()
-    const response = await axios.post(`${GEMINI_BASE}/models/${model}:generateContent?key=${apiKey}`, {
+export async function generateJson(apiKey, prompt, model, provider) {
+    const baseUrl = provider?.baseUrl || GEMINI_BASE
+    const response = await axios.post(`${baseUrl}/models/${model}:generateContent?key=${apiKey}`, {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
             responseMimeType: 'application/json',
@@ -40,24 +27,22 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
 }
 
 /**
- * Prueba la conexión con la API key de Gemini.
- * @param {string} apiKey
- * @returns {boolean}
+ * Prueba la conexión con Gemini.
  */
-export async function testGeminiConnection(apiKey) {
+export async function testConnection(apiKey, model, provider) {
     try {
-        const modelId = getModel()
-        const res = await axios.get(`${GEMINI_BASE}/models/${modelId}?key=${apiKey}`)
-        const model = res.data
+        const baseUrl = provider?.baseUrl || GEMINI_BASE
+        const res = await axios.get(`${baseUrl}/models/${model}?key=${apiKey}`)
+        const m = res.data
         return {
             ok: true,
             message: 'Conexión exitosa',
             model: {
-                name: model.displayName || model.name,
-                description: model.description || '',
-                inputTokenLimit: model.inputTokenLimit,
-                outputTokenLimit: model.outputTokenLimit,
-                version: model.version || '',
+                name: m.displayName || m.name,
+                description: m.description || '',
+                inputTokenLimit: m.inputTokenLimit,
+                outputTokenLimit: m.outputTokenLimit,
+                version: m.version || '',
             }
         }
     } catch (e) {
@@ -76,9 +61,13 @@ export async function testGeminiConnection(apiKey) {
     }
 }
 
-export async function getAvailableModels(apiKey) {
+/**
+ * Obtiene modelos disponibles en Gemini.
+ */
+export async function getAvailableModels(apiKey, provider) {
     try {
-        const res = await axios.get(`${GEMINI_BASE}/models?key=${apiKey}`)
+        const baseUrl = provider?.baseUrl || GEMINI_BASE
+        const res = await axios.get(`${baseUrl}/models?key=${apiKey}`)
         return (res.data.models || []).map(m => ({
             id: m.name?.replace('models/', ''),
             name: m.displayName || m.name,
@@ -90,58 +79,10 @@ export async function getAvailableModels(apiKey) {
     }
 }
 
-function buildPrompt(medicamentos, enfermedades, prospectos) {
-    const medList = medicamentos.map((m, i) => {
-        const nombre = m.name || m.data?.nombre || 'Desconocido'
-        const pa = m.data?.vtm?.nombre || ''
-        return `${i + 1}. ${nombre}${pa ? ` (Principio activo: ${pa})` : ''}`
-    }).join('\n')
-
-    const enfList = enfermedades.length > 0
-        ? enfermedades.join(', ')
-        : 'No especificadas'
-
-    let prospectosSection = ''
-    if (prospectos.length > 0) {
-        prospectosSection = '\nPROSPECTOS DISPONIBLES:\n' + prospectos.map(p =>
-            `--- ${p.nombre} ---\n${p.texto}\n`
-        ).join('\n')
-    }
-
-    return `Eres un asistente farmacéutico experto. Analiza las posibles interacciones entre los siguientes medicamentos que un paciente toma simultáneamente.
-
-MEDICAMENTOS:
-${medList}
-
-ENFERMEDADES/SÍNTOMAS DEL PACIENTE:
-${enfList}
-${prospectosSection}
-Responde EXCLUSIVAMENTE en formato JSON con esta estructura:
-{
-  "severidad": "ninguna" | "leve" | "moderada" | "grave",
-  "resumen": "frase corta de 1-2 líneas describiendo el resultado general",
-  "interacciones": [
-    {
-      "medicamentos": ["nombre_med1", "nombre_med2"],
-      "tipo": "descripción breve de la interacción",
-      "severidad": "leve" | "moderada" | "grave",
-      "recomendacion": "qué debe hacer el paciente"
-    }
-  ],
-  "contraindicaciones_enfermedad": [
-    {
-      "medicamento": "nombre",
-      "enfermedad": "nombre",
-      "detalle": "por qué está contraindicado"
-    }
-  ]
-}
-
-Si no hay interacciones ni contraindicaciones, devuelve severidad "ninguna", resumen indicándolo, y arrays vacíos.
-Sé preciso y basa tu análisis en evidencia farmacológica.`
-}
-
-async function fetchProspectos(medicamentos) {
+/**
+ * Descarga prospectos de CIMA para enriquecer el prompt.
+ */
+export async function fetchProspectos(medicamentos) {
     const prospectos = []
     for (const med of medicamentos) {
         const docs = med.data?.docs

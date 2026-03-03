@@ -25,9 +25,16 @@ export const useUiStore = defineStore('ui', () => {
   const sidebarBg = ref('')
   const addButton = ref(true)
   const sidebarRail = ref(false)
-  const apiKey = ref(saved?.apiKey ?? null)
+  // Mapa de API keys descifradas por proveedor: { gemini: 'AIza...', openai: 'sk-...', ... }
+  const apiKeys = ref(saved?.apiKeys ?? {})
   const pinRequired = ref(false)
-  const geminiModel = ref(saved?.geminiModel ?? 'gemini-2.5-flash')
+  const aiProvider = ref(saved?.aiProvider ?? 'gemini')
+  const aiModel = ref(saved?.aiModel ?? 'gemini-2.5-flash')
+  // Compat alias — código legacy que use geminiModel sigue funcionando
+  const geminiModel = aiModel
+
+  // apiKey computed: devuelve la key del proveedor activo
+  const apiKey = computed(() => apiKeys.value[aiProvider.value] || null)
 
   // User session (restored from sessionStorage)
   const activeUserId = ref(saved?.activeUserId ?? null)
@@ -52,15 +59,32 @@ export const useUiStore = defineStore('ui', () => {
       activeUserAvatar: activeUserAvatar.value,
       userPin: userPin.value,
       sessionReady: sessionReady.value,
-      apiKey: apiKey.value,
-      geminiModel: geminiModel.value,
+      apiKeys: apiKeys.value,
+      aiProvider: aiProvider.value,
+      aiModel: aiModel.value,
     })
   }
 
-  function setApiKey(key) { apiKey.value = key; persistSession() }
-  function clearApiKey() { apiKey.value = null; persistSession() }
+  function setApiKey(key, provider) {
+    const prov = provider || aiProvider.value
+    apiKeys.value = { ...apiKeys.value, [prov]: key }
+    persistSession()
+  }
+  function clearApiKey(provider) {
+    const prov = provider || aiProvider.value
+    const copy = { ...apiKeys.value }
+    delete copy[prov]
+    apiKeys.value = copy
+    persistSession()
+  }
+  function getApiKeyFor(provider) {
+    return apiKeys.value[provider] || null
+  }
   function setPinRequired(val) { pinRequired.value = val }
-  function setGeminiModel(val) { geminiModel.value = val; persistSession() }
+  function setAiProvider(val) { aiProvider.value = val; persistSession() }
+  function setAiModel(val) { aiModel.value = val; persistSession() }
+  // Compat alias
+  function setGeminiModel(val) { aiModel.value = val; persistSession() }
 
   function setActiveUser({ id, nombre, avatar }) {
     activeUserId.value = id
@@ -78,15 +102,16 @@ export const useUiStore = defineStore('ui', () => {
     if (activeUserId.value) {
       cachedSessions.value[activeUserId.value] = {
         pin: userPin.value,
-        apiKey: apiKey.value,
-        geminiModel: geminiModel.value
+        apiKeys: { ...apiKeys.value },
+        aiProvider: aiProvider.value,
+        aiModel: aiModel.value,
       }
     }
     activeUserId.value = null
     activeUserName.value = ''
     activeUserAvatar.value = null
     userPin.value = null
-    apiKey.value = null
+    apiKeys.value = {}
     sessionReady.value = false
     pinRequired.value = false
     localStorage.removeItem('medapp_active_user_id')
@@ -101,7 +126,7 @@ export const useUiStore = defineStore('ui', () => {
     activeUserName.value = ''
     activeUserAvatar.value = null
     userPin.value = null
-    apiKey.value = null
+    apiKeys.value = {}
     sessionReady.value = false
     pinRequired.value = false
     localStorage.removeItem('medapp_active_user_id')
@@ -114,12 +139,12 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     sidebarDrawer, customizerDrawer, sidebarColor, sidebarBg, addButton, sidebarRail,
-    apiKey, pinRequired, geminiModel,
+    apiKey, apiKeys, pinRequired, aiProvider, aiModel, geminiModel,
     activeUserId, activeUserName, activeUserAvatar, userPin, sessionReady, cachedSessions,
     showAddButton,
     setSidebarDrawer, setCustomizerDrawer, setSidebarColor, setAddButton,
     setSidebarRail, toggleSidebarRail,
-    setApiKey, clearApiKey, setPinRequired, setGeminiModel,
+    setApiKey, clearApiKey, getApiKeyFor, setPinRequired, setAiProvider, setAiModel, setGeminiModel,
     setActiveUser, setUserPin, setSessionReady, switchUser, logout, getCachedSession,
   }
 })

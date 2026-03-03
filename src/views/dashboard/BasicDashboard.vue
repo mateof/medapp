@@ -136,6 +136,15 @@
                   >
                     {{ name }}
                   </v-chip>
+                  <v-chip
+                    v-if="latestDetalle?._ai"
+                    size="x-small"
+                    variant="tonal"
+                    color="secondary"
+                    prepend-icon="mdi-robot-outline"
+                  >
+                    {{ latestDetalle._ai.providerName || latestDetalle._ai.provider }} · {{ latestDetalle._ai.model }}
+                  </v-chip>
                 </div>
 
                 <!-- Interacciones individuales -->
@@ -293,6 +302,7 @@
                     </v-list-item-title>
                     <v-list-item-subtitle>
                       {{ formatFecha(check.fecha) }} · {{ (check.medNames || []).length }} medicamentos
+                      <template v-if="getCheckAi(check)"> · {{ getCheckAi(check) }}</template>
                     </v-list-item-subtitle>
                     <template #append>
                       <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
@@ -623,6 +633,14 @@ function getEventColor(tipo) {
     case 'tag_added': return 'info'
     default: return 'grey'
   }
+}
+
+function getCheckAi(check) {
+  try {
+    const data = JSON.parse(check.detalle)
+    if (data._ai) return `${data._ai.providerName || data._ai.provider} · ${data._ai.model}`
+  } catch { /* ignore */ }
+  return null
 }
 
 function getEventIcon(tipo) {

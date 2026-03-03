@@ -66,36 +66,49 @@ export async function importBackup(jsonData) {
   }
 
   const imported = []
+  // JSON.parse(JSON.stringify()) para garantizar que los datos sean clonables por IndexedDB
+  const clone = obj => JSON.parse(JSON.stringify(obj))
 
   for (const userData of jsonData.users) {
-    const newUserId = await db.usuarios.add({
-      nombre: userData.profile.nombre,
-      pin_check: userData.profile.pin_check,
-      avatar: userData.profile.avatar,
-      createdAt: userData.profile.createdAt
-    })
+    // Comprobar si ya existe un usuario con el mismo nombre
+    const existingUsers = await db.usuarios.toArray()
+    const normalizedName = userData.profile.nombre.trim().toLowerCase()
+    const existing = existingUsers.find(u => u.nombre.toLowerCase() === normalizedName)
+
+    let newUserId
+    if (existing) {
+      // Si ya existe, reusar su ID y no crear duplicado
+      newUserId = existing.id
+    } else {
+      newUserId = await db.usuarios.add(clone({
+        nombre: userData.profile.nombre,
+        pin_check: userData.profile.pin_check,
+        avatar: userData.profile.avatar,
+        createdAt: userData.profile.createdAt
+      }))
+    }
 
     if (userData.medicamentos?.length) {
       await db.medicamentos.bulkAdd(
-        userData.medicamentos.map(m => ({ ...m, userId: newUserId }))
+        userData.medicamentos.map(m => clone({ ...m, userId: newUserId }))
       )
     }
 
     if (userData.actividad?.length) {
       await db.actividad.bulkAdd(
-        userData.actividad.map(a => ({ ...a, userId: newUserId }))
+        userData.actividad.map(a => clone({ ...a, userId: newUserId }))
       )
     }
 
     if (userData.interacciones?.length) {
       await db.interacciones.bulkAdd(
-        userData.interacciones.map(i => ({ ...i, userId: newUserId }))
+        userData.interacciones.map(i => clone({ ...i, userId: newUserId }))
       )
     }
 
     if (userData.settings?.length) {
       await db.settings.bulkPut(
-        userData.settings.map(s => ({
+        userData.settings.map(s => clone({
           key: `user_${newUserId}_${s.key}`,
           value: s.value
         }))
