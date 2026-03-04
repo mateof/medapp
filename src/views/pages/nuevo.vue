@@ -320,17 +320,27 @@ const filteredInteraccionResult = computed(() => {
   const medName = model.value.nombre
   const enfermedades = chips.value.map(c => c.toLowerCase())
 
+  const matchMed = (m) => fuzzyMatch(m, medName)
+
   const interacciones = (interaccionResult.value.interacciones || []).filter(inter =>
-    (inter.medicamentos || []).some(m => fuzzyMatch(m, medName))
+    (inter.medicamentos || []).some(m => matchMed(m))
   )
 
   const contraindicaciones = (interaccionResult.value.contraindicaciones_enfermedad || []).filter(ci => {
-    const matchMed = ci.medicamento && fuzzyMatch(ci.medicamento, medName)
+    const medMatch = ci.medicamento && matchMed(ci.medicamento)
     const matchEnf = ci.enfermedad && enfermedades.some(e =>
       ci.enfermedad.toLowerCase().includes(e) || e.includes(ci.enfermedad.toLowerCase())
     )
-    return matchMed || matchEnf
+    return medMatch || matchEnf
   })
+
+  const contraindicacionesAlergia = (interaccionResult.value.contraindicaciones_alergia || []).filter(ca =>
+    ca.medicamento && matchMed(ca.medicamento)
+  )
+
+  const observacionesPosologia = (interaccionResult.value.observaciones_posologia || []).filter(op =>
+    op.medicamento && matchMed(op.medicamento)
+  )
 
   const severityOrder = { grave: 3, moderada: 2, leve: 1 }
   const maxSev = interacciones.reduce((max, i) =>
@@ -342,6 +352,8 @@ const filteredInteraccionResult = computed(() => {
     severidad: maxSev,
     interacciones,
     contraindicaciones_enfermedad: contraindicaciones,
+    contraindicaciones_alergia: contraindicacionesAlergia,
+    observaciones_posologia: observacionesPosologia,
   }
 })
 

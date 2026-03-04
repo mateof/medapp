@@ -352,17 +352,30 @@ function fuzzyMatch(a, b) {
 const filteredInteraccionResult = computed(() => {
   if (!interaccionResult.value) return null
   const medName = nombre.value
+  const matchMed = (m) => fuzzyMatch(m, medName)
+
   const interacciones = (interaccionResult.value.interacciones || []).filter(inter =>
-    (inter.medicamentos || []).some(m => fuzzyMatch(m, medName))
+    (inter.medicamentos || []).some(m => matchMed(m))
   )
   const contraindicaciones = (interaccionResult.value.contraindicaciones_enfermedad || []).filter(ci =>
-    ci.medicamento && fuzzyMatch(ci.medicamento, medName)
+    ci.medicamento && matchMed(ci.medicamento)
   )
-  if (interacciones.length === 0 && contraindicaciones.length === 0) return null
+  const contraindicacionesAlergia = (interaccionResult.value.contraindicaciones_alergia || []).filter(ca =>
+    ca.medicamento && matchMed(ca.medicamento)
+  )
+  const observacionesPosologia = (interaccionResult.value.observaciones_posologia || []).filter(op =>
+    op.medicamento && matchMed(op.medicamento)
+  )
+
+  if (interacciones.length === 0 && contraindicaciones.length === 0 &&
+      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0) return null
+
   return {
     ...interaccionResult.value,
     interacciones,
-    contraindicaciones_enfermedad: contraindicaciones
+    contraindicaciones_enfermedad: contraindicaciones,
+    contraindicaciones_alergia: contraindicacionesAlergia,
+    observaciones_posologia: observacionesPosologia,
   }
 })
 
