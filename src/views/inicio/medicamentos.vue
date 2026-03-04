@@ -148,6 +148,48 @@
                     </v-list-item>
                   </v-list>
                 </div>
+
+                <div v-if="getFilteredData(item.id).contraindicaciones_alergia?.length > 0" class="mt-2">
+                  <div class="text-subtitle-2 font-weight-bold mb-1">Alergias</div>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="(ca, i) in getFilteredData(item.id).contraindicaciones_alergia"
+                      :key="'ca-' + i"
+                      rounded="lg"
+                      @click="openDetail('contraindicacion_alergia', ca)"
+                    >
+                      <template #prepend>
+                        <v-icon color="error" size="small">mdi-allergy</v-icon>
+                      </template>
+                      <v-list-item-title class="text-body-2 font-weight-medium text-wrap">{{ ca.medicamento }} → {{ ca.alergia }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ ca.detalle }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </div>
+
+                <div v-if="getFilteredData(item.id).observaciones_posologia?.length > 0" class="mt-2">
+                  <div class="text-subtitle-2 font-weight-bold mb-1">Posología</div>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="(op, i) in getFilteredData(item.id).observaciones_posologia"
+                      :key="'op-' + i"
+                      rounded="lg"
+                      @click="openDetail('posologia', op)"
+                    >
+                      <template #prepend>
+                        <v-icon color="info" size="small">mdi-clock-alert-outline</v-icon>
+                      </template>
+                      <v-list-item-title class="text-body-2 font-weight-medium text-wrap">{{ op.medicamento }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ op.observacion }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </div>
               </template>
 
               <div v-else class="text-body-2 text-medium-emphasis py-2">

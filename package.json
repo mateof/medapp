@@ -1,6 +1,7 @@
 {
   "name": "MedApp",
-  "version": "2.1.1",
+  "version": "2.1.2",
+  "author": "Mateo",
   "description": "MedApp",
   "main": "index.html",
   "private": true,
