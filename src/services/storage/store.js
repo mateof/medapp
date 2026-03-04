@@ -167,8 +167,9 @@ export async function setSetting(key, value) {
 
 export async function saveInteraccion(data) {
     const userId = getUserId();
+    const plain = JSON.parse(JSON.stringify(data));
     await db.interacciones.add({
-        ...data,
+        ...plain,
         fecha: new Date().toISOString(),
         userId
     });
