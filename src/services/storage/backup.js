@@ -32,7 +32,16 @@ export async function exportUsers(userIds) {
         nombre: user.nombre,
         pin_check: user.pin_check,
         avatar: user.avatar,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        enfermedades_cronicas: user.enfermedades_cronicas || [],
+        alergias: user.alergias || [],
+        peculiaridades: user.peculiaridades || [],
+        esMascota: user.esMascota || false,
+        tipoMascota: user.tipoMascota || null,
+        edad: user.edad || null,
+        peso: user.peso || null,
+        altura: user.altura || null,
+        genero: user.genero || null,
       },
       medicamentos: medicamentos.map(strip),
       actividad: actividad.map(strip),
@@ -84,7 +93,16 @@ export async function importBackup(jsonData) {
         nombre: userData.profile.nombre,
         pin_check: userData.profile.pin_check,
         avatar: userData.profile.avatar,
-        createdAt: userData.profile.createdAt
+        createdAt: userData.profile.createdAt,
+        enfermedades_cronicas: userData.profile.enfermedades_cronicas || [],
+        alergias: userData.profile.alergias || [],
+        peculiaridades: userData.profile.peculiaridades || [],
+        esMascota: userData.profile.esMascota || false,
+        tipoMascota: userData.profile.tipoMascota || null,
+        edad: userData.profile.edad || null,
+        peso: userData.profile.peso || null,
+        altura: userData.profile.altura || null,
+        genero: userData.profile.genero || null,
       }))
     }
 
