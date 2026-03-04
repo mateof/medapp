@@ -13,6 +13,7 @@ export function getDocumentsFromDrug(data) {
 
 
 export function getPresentacionesPSum(medicamento) {
+    if (!medicamento?.presentaciones) return [];
     return medicamento.presentaciones.filter( x => !!x.psum);
 }
 
