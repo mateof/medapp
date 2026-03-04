@@ -11,9 +11,14 @@ MedApp nace para resolver un problema común: llevar un control organizado de lo
 ## Funcionalidades
 
 - **Búsqueda de medicamentos** a través de la API de CIMA (AEMPS), la base de datos oficial de medicamentos en España
+- **Medicamentos veterinarios**: búsqueda en CIMAVet (AEMPS) para perros, gatos, aves, conejos y más
 - **Registro de medicamentos** con información detallada: composición, laboratorio, prospecto, principios activos, etc.
-- **Detección de interacciones** entre medicamentos mediante inteligencia artificial (Google Gemini), incluyendo niveles de gravedad
-- **Contraindicaciones** según enfermedades o condiciones del paciente
+- **Posología**: registro de dosis, frecuencia, duración y notas al añadir un medicamento
+- **Perfil de salud**: edad, peso, género, enfermedades crónicas, alergias y peculiaridades del paciente
+- **Detección de interacciones** entre medicamentos mediante inteligencia artificial, incluyendo niveles de gravedad y análisis de posología
+- **Múltiples proveedores de IA**: Google Gemini, OpenAI, Anthropic (Claude), GitHub Copilot, xAI (Grok), DeepSeek, OpenRouter y servidores locales (Ollama, LM Studio, etc.)
+- **API keys compartidas**: posibilidad de compartir una API key entre todos los usuarios de la misma instalación
+- **Contraindicaciones** según enfermedades, alergias o condiciones del paciente
 - **Dashboard** con estadísticas: medicamentos por enfermedad, actividad reciente, gráficos de evolución
 - **Etiquetas** para clasificar medicamentos por enfermedad o síntoma
 - **Sistema multiusuario** con PIN de acceso, avatares y datos aislados por usuario
@@ -28,11 +33,11 @@ MedApp nace para resolver un problema común: llevar un control organizado de lo
 | UI | Vuetify 3.7 + Material Design Icons |
 | Estado | Pinia |
 | Base de datos | Dexie 3 (IndexedDB) |
-| IA | Google Gemini API |
+| IA | Google Gemini, OpenAI, Anthropic, OpenRouter y más |
 | Build | Vite 6 |
 | PWA | vite-plugin-pwa (Workbox) |
 | Gráficos | Chart.js + vue-chartjs |
-| API medicamentos | CIMA (AEMPS) |
+| API medicamentos | CIMA / CIMAVet (AEMPS) |
 
 ## Instalación
 
@@ -64,11 +69,33 @@ npx serve dist
 
 Para habilitar la detección automática de interacciones:
 
-1. Obtener una API key gratuita en [Google AI Studio](https://aistudio.google.com)
-2. Ir a **Ajustes** dentro de la app
+1. Ir a **Ajustes** dentro de la app
+2. Seleccionar un proveedor de IA (Gemini, OpenAI, Anthropic, OpenRouter, etc.)
 3. Pegar la API key y guardar
 
-La key se cifra localmente con el PIN del usuario (AES-256-GCM) y nunca sale del navegador.
+Proveedores disponibles:
+
+| Proveedor | Obtener key | Notas |
+|---|---|---|
+| Google Gemini | [Google AI Studio](https://aistudio.google.com) | Plan gratuito disponible |
+| OpenAI | [OpenAI Platform](https://platform.openai.com/api-keys) | GPT-4o, GPT-4o Mini |
+| Anthropic | [Anthropic Console](https://console.anthropic.com/settings/keys) | Requiere proxy CORS |
+| OpenRouter | [OpenRouter Keys](https://openrouter.ai/keys) | Acceso a cientos de modelos con una sola key |
+| GitHub Copilot | [GitHub Settings](https://github.com/settings/tokens) | Modelos vía GitHub |
+| xAI (Grok) | [xAI Console](https://console.x.ai) | Grok 3 |
+| DeepSeek | [DeepSeek Platform](https://platform.deepseek.com/api_keys) | Económico y potente |
+| Servidor local | [Ollama](https://ollama.com) | Ollama, LM Studio, vLLM, etc. |
+
+La key se cifra localmente con el PIN del usuario (AES-256-GCM) y nunca sale del navegador. Opcionalmente, se puede compartir una key con todos los usuarios de la misma instalación.
+
+## Mascotas
+
+MedApp permite gestionar medicamentos para mascotas:
+
+1. Ir a **Perfil de salud** y seleccionar "Mascota" como tipo de paciente
+2. Indicar el tipo de animal (perro, gato, ave, conejo, reptil, pez)
+3. La búsqueda de medicamentos se realizará en **CIMAVet**, la base de datos veterinaria de la AEMPS
+4. El análisis de interacciones tendrá en cuenta que el paciente es un animal
 
 ## Estructura del proyecto
 
@@ -82,7 +109,7 @@ src/
     farmacos/       # Detalles de medicamento
     dashboard/      # Dashboard con estadísticas
   services/
-    ai/             # Integración con Gemini
+    ai/             # Integración multi-proveedor IA
     storage/        # CRUD IndexedDB (store, users, backup)
     crypto.js       # Cifrado AES-256-GCM / fallback XOR
     db.js           # Schema Dexie y migraciones
@@ -94,8 +121,8 @@ src/
 
 Todos los datos (medicamentos, interacciones, ajustes, API keys) se almacenan exclusivamente en el navegador del usuario. No se envía información a ningún servidor propio. Las únicas peticiones externas son:
 
-- **CIMA (AEMPS)**: para buscar información de medicamentos
-- **Google Gemini**: para analizar interacciones (solo si el usuario configura su propia API key)
+- **CIMA / CIMAVet (AEMPS)**: para buscar información de medicamentos humanos y veterinarios
+- **Proveedor de IA configurado**: para analizar interacciones (solo si el usuario configura una API key)
 
 ## Licencia
 

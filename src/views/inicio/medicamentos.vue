@@ -55,6 +55,10 @@
                       {{ tag }}
                     </v-chip>
                   </div>
+                  <div v-if="item.posologia" class="d-flex align-center ga-1 mt-1 text-caption text-medium-emphasis">
+                    <v-icon size="12">mdi-clock-outline</v-icon>
+                    <span>{{ formatPosologiaCorta(item.posologia) }}</span>
+                  </div>
                 </div>
               </div>
               <template #actions="{ expanded }">
@@ -249,7 +253,7 @@ function namesOverlap(a, b) {
 
 function filterInteraccionesForMed(resultado, med) {
   const nameLower = med.name.toLowerCase()
-  const pa = med.data?.vtm?.nombre?.toLowerCase() || ''
+  const pa = med.data?.vtm?.nombre?.toLowerCase() || med.data?.pactivos?.toLowerCase() || ''
 
   const interacciones = (resultado.interacciones || []).filter(inter =>
     (inter.medicamentos || []).some(m =>
@@ -331,6 +335,14 @@ function severidadChipColor(sev) {
     case 'leve': return 'info'
     default: return 'success'
   }
+}
+
+function formatPosologiaCorta(pos) {
+  const parts = []
+  if (pos.dosis) parts.push(pos.dosis)
+  if (pos.frecuencia) parts.push(pos.frecuencia.toLowerCase())
+  if (pos.duracion) parts.push(`(${pos.duracion})`)
+  return parts.join(' — ') || ''
 }
 
 function getFoto(item) {

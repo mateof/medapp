@@ -72,4 +72,34 @@ db.version(5).stores({
   }
 });
 
+db.version(6).stores({
+  usuarios: '++id, nombre, createdAt, esMascota',
+  medicamentos: '++id, name, data, datos, nregistro, *enfermedades, *sintomas, dateins, dateupd, syncstate, syncdate, userId',
+  actividad: '++id, tipo, fecha, medId, medName, userId',
+  settings: 'key',
+  interacciones: '++id, fecha, severidad, userId'
+}).upgrade(trans => {
+  return trans.table('usuarios').toCollection().modify(user => {
+    if (user.enfermedades_cronicas === undefined) user.enfermedades_cronicas = []
+    if (user.alergias === undefined) user.alergias = []
+    if (user.peculiaridades === undefined) user.peculiaridades = []
+    if (user.esMascota === undefined) user.esMascota = false
+    if (user.tipoMascota === undefined) user.tipoMascota = null
+  })
+});
+
+db.version(7).stores({
+  usuarios: '++id, nombre, createdAt, esMascota',
+  medicamentos: '++id, name, data, datos, nregistro, *enfermedades, *sintomas, dateins, dateupd, syncstate, syncdate, userId',
+  actividad: '++id, tipo, fecha, medId, medName, userId',
+  settings: 'key',
+  interacciones: '++id, fecha, severidad, userId'
+}).upgrade(trans => {
+  return trans.table('usuarios').toCollection().modify(user => {
+    if (user.peso === undefined) user.peso = null
+    if (user.edad === undefined) user.edad = null
+    if (user.genero === undefined) user.genero = null
+  })
+});
+
 db.open();

@@ -118,6 +118,29 @@ export const AI_PROVIDERS = {
     ],
   },
 
+  openrouter: {
+    id: 'openrouter',
+    name: 'OpenRouter',
+    icon: 'mdi-swap-horizontal-circle',
+    color: '#6366F1',
+    apiType: 'openai',
+    baseUrl: 'https://openrouter.ai/api/v1',
+    defaultModel: 'openai/gpt-4o-mini',
+    keyPlaceholder: 'sk-or-v1-...',
+    keyLink: 'https://openrouter.ai/keys',
+    keyLinkText: 'OpenRouter Keys',
+    supportsModelList: true,
+    models: [
+      { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', description: 'Rápido y económico (OpenAI)' },
+      { id: 'openai/gpt-4o', name: 'GPT-4o', description: 'Multimodal potente (OpenAI)' },
+      { id: 'anthropic/claude-sonnet-4', name: 'Claude Sonnet 4', description: 'Equilibrio calidad/velocidad (Anthropic)' },
+      { id: 'google/gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Rápido y eficiente (Google)' },
+      { id: 'meta-llama/llama-4-scout', name: 'Llama 4 Scout', description: 'Open-source (Meta)' },
+      { id: 'deepseek/deepseek-chat-v3-0324', name: 'DeepSeek V3', description: 'Potente y económico (DeepSeek)' },
+      { id: 'mistralai/mistral-small-3.1-24b-instruct', name: 'Mistral Small 3.1', description: 'Eficiente (Mistral)' },
+    ],
+  },
+
   local: {
     id: 'local',
     name: 'Servidor local',

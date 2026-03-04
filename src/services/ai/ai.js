@@ -4,6 +4,7 @@
  */
 import { useUiStore } from '@/stores/ui'
 import { getSetting } from '@/services/storage/store'
+import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt } from './prompt'
 import { fetchProspectos } from './gemini'
@@ -50,9 +51,15 @@ function getModule(provider) {
 export async function checkInteracciones(apiKey, medicamentos, enfermedades = []) {
   const { provider, model } = await getActiveConfig()
   const mod = getModule(provider)
+  const store = useUiStore()
 
-  const prospectos = await fetchProspectos(medicamentos)
-  const prompt = buildPrompt(medicamentos, enfermedades, prospectos)
+  // Cargar perfil de salud del usuario
+  const perfil = await getUserProfile(store.activeUserId)
+
+  // CIMAVet (mascotas) no tiene prospectos HTML, solo PDF
+  const prospectos = perfil?.esMascota ? [] : await fetchProspectos(medicamentos)
+
+  const prompt = buildPrompt(medicamentos, enfermedades, prospectos, perfil)
 
   const result = await mod.generateJson(apiKey, prompt, model, provider)
 

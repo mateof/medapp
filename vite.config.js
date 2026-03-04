@@ -62,6 +62,10 @@ export default defineConfig({
         target: 'https://cima.aemps.es',
         changeOrigin: true,
       },
+      '/cimavet': {
+        target: 'https://cimavet.aemps.es',
+        changeOrigin: true,
+      },
     },
   },
 })

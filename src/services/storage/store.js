@@ -33,7 +33,7 @@ export async function getActividadReciente(limit = 20) {
 
 // --- Medicamentos CRUD ---
 
-export async function addMedicamento(m, etiquetas = []) {
+export async function addMedicamento(m, etiquetas = [], posologia = null) {
     const userId = getUserId();
     const plain = JSON.parse(JSON.stringify(m));
     const parsedTags = JSON.parse(JSON.stringify(etiquetas));
@@ -42,6 +42,7 @@ export async function addMedicamento(m, etiquetas = []) {
         data: plain,
         nregistro: plain.nregistro,
         enfermedades: parsedTags,
+        posologia: posologia ? JSON.parse(JSON.stringify(posologia)) : null,
         dateins: new Date().toISOString(),
         userId
     });
@@ -201,6 +202,21 @@ export async function getInteraccionByMedId(medId, medName) {
 export async function getLatestInteraccion() {
     const all = await getInteracciones();
     return all[0] || null;
+}
+
+// --- Shared settings (not scoped to user) ---
+
+export async function getSharedSetting(key) {
+    const row = await db.settings.get(`shared_${key}`);
+    return row ? row.value : null;
+}
+
+export async function setSharedSetting(key, value) {
+    await db.settings.put({ key: `shared_${key}`, value });
+}
+
+export async function deleteSharedSetting(key) {
+    await db.settings.delete(`shared_${key}`);
 }
 
 export async function deleteInteraccionesByMedId(medId, medName) {

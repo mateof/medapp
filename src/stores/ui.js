@@ -42,6 +42,8 @@ export const useUiStore = defineStore('ui', () => {
   const activeUserAvatar = ref(saved?.activeUserAvatar ?? null)
   const userPin = ref(saved?.userPin ?? null)
   const sessionReady = ref(saved?.sessionReady ?? false)
+  const activeUserEsMascota = ref(saved?.activeUserEsMascota ?? false)
+  const activeUserTipoMascota = ref(saved?.activeUserTipoMascota ?? null)
   const cachedSessions = ref({})
 
   const showAddButton = computed(() => addButton.value)
@@ -62,6 +64,8 @@ export const useUiStore = defineStore('ui', () => {
       apiKeys: apiKeys.value,
       aiProvider: aiProvider.value,
       aiModel: aiModel.value,
+      activeUserEsMascota: activeUserEsMascota.value,
+      activeUserTipoMascota: activeUserTipoMascota.value,
     })
   }
 
@@ -86,10 +90,12 @@ export const useUiStore = defineStore('ui', () => {
   // Compat alias
   function setGeminiModel(val) { aiModel.value = val; persistSession() }
 
-  function setActiveUser({ id, nombre, avatar }) {
+  function setActiveUser({ id, nombre, avatar, esMascota, tipoMascota }) {
     activeUserId.value = id
     activeUserName.value = nombre
     activeUserAvatar.value = avatar
+    activeUserEsMascota.value = esMascota || false
+    activeUserTipoMascota.value = tipoMascota || null
     localStorage.setItem('medapp_active_user_id', String(id))
     persistSession()
   }
@@ -112,6 +118,8 @@ export const useUiStore = defineStore('ui', () => {
     activeUserAvatar.value = null
     userPin.value = null
     apiKeys.value = {}
+    activeUserEsMascota.value = false
+    activeUserTipoMascota.value = null
     sessionReady.value = false
     pinRequired.value = false
     localStorage.removeItem('medapp_active_user_id')
@@ -127,6 +135,8 @@ export const useUiStore = defineStore('ui', () => {
     activeUserAvatar.value = null
     userPin.value = null
     apiKeys.value = {}
+    activeUserEsMascota.value = false
+    activeUserTipoMascota.value = null
     sessionReady.value = false
     pinRequired.value = false
     localStorage.removeItem('medapp_active_user_id')
@@ -140,7 +150,8 @@ export const useUiStore = defineStore('ui', () => {
   return {
     sidebarDrawer, customizerDrawer, sidebarColor, sidebarBg, addButton, sidebarRail,
     apiKey, apiKeys, pinRequired, aiProvider, aiModel, geminiModel,
-    activeUserId, activeUserName, activeUserAvatar, userPin, sessionReady, cachedSessions,
+    activeUserId, activeUserName, activeUserAvatar, userPin, sessionReady,
+    activeUserEsMascota, activeUserTipoMascota, cachedSessions,
     showAddButton,
     setSidebarDrawer, setCustomizerDrawer, setSidebarColor, setAddButton,
     setSidebarRail, toggleSidebarRail,

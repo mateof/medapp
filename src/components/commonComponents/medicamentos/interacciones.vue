@@ -50,6 +50,50 @@
       </v-list>
     </div>
 
+    <div v-if="resultado.contraindicaciones_alergia?.length">
+      <h4 class="text-subtitle-1 font-weight-bold mb-2">Contraindicaciones por alergia</h4>
+      <v-list density="compact">
+        <v-list-item
+          v-for="(ca, i) in resultado.contraindicaciones_alergia"
+          :key="'ca-' + i"
+          rounded="lg"
+          @click="openDetail('contraindicacion_alergia', ca)"
+        >
+          <template #prepend>
+            <v-icon color="error" size="small">mdi-allergy</v-icon>
+          </template>
+          <v-list-item-title class="text-wrap">{{ ca.medicamento }} → {{ ca.alergia }}</v-list-item-title>
+          <v-list-item-subtitle class="text-truncate">{{ ca.detalle }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+      </v-list>
+    </div>
+
+    <div v-if="resultado.observaciones_posologia?.length">
+      <h4 class="text-subtitle-1 font-weight-bold mb-2">Observaciones de posología</h4>
+      <v-list density="compact">
+        <v-list-item
+          v-for="(obs, i) in resultado.observaciones_posologia"
+          :key="'pos-' + i"
+          rounded="lg"
+          @click="openDetail('posologia', obs)"
+        >
+          <template #prepend>
+            <v-chip :color="posologiaColor(obs.tipo)" size="small" class="mr-2">
+              {{ posologiaLabel(obs.tipo) }}
+            </v-chip>
+          </template>
+          <v-list-item-title class="text-wrap">{{ obs.medicamento }}</v-list-item-title>
+          <v-list-item-subtitle class="text-wrap">{{ obs.observacion }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+      </v-list>
+    </div>
+
     <div v-if="resultado._ai" class="d-flex align-center ga-2 mt-4 mb-2">
       <v-chip size="x-small" variant="tonal" color="primary" prepend-icon="mdi-robot-outline">
         {{ resultado._ai.providerName || resultado._ai.provider }}
@@ -123,6 +167,26 @@ function severidadColor(sev) {
     case 'moderada': return 'orange'
     case 'leve': return 'info'
     default: return 'success'
+  }
+}
+
+function posologiaColor(tipo) {
+  switch (tipo) {
+    case 'excesiva': return 'error'
+    case 'insuficiente': return 'warning'
+    case 'precaucion': return 'orange'
+    case 'adecuada': return 'success'
+    default: return 'info'
+  }
+}
+
+function posologiaLabel(tipo) {
+  switch (tipo) {
+    case 'excesiva': return 'Excesiva'
+    case 'insuficiente': return 'Insuficiente'
+    case 'precaucion': return 'Precaución'
+    case 'adecuada': return 'Adecuada'
+    default: return tipo || 'Info'
   }
 }
 </script>

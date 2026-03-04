@@ -128,8 +128,13 @@ const items = [
     to: '/medicamentos',
   },
   {
+    title: 'Resumen',
+    icon: 'mdi-chart-box-outline',
+    to: '/resumen',
+  },
+  {
     title: 'Perfil',
-    icon: 'mdi-account-circle',
+    icon: 'mdi-account-heart',
     to: '/perfil',
   },
   {

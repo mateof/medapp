@@ -250,7 +250,11 @@ async function selectUser(user) {
   const cached = uiStore.getCachedSession(user.id)
   if (cached) {
     loading.value = true
-    uiStore.setActiveUser({ id: user.id, nombre: user.nombre, avatar: user.avatar })
+    uiStore.setActiveUser({
+      id: user.id, nombre: user.nombre, avatar: user.avatar,
+      esMascota: cached.esMascota || false,
+      tipoMascota: cached.tipoMascota || null,
+    })
     uiStore.setUserPin(cached.pin)
     // Restaurar todas las API keys del mapa cacheado
     if (cached.apiKeys) {
@@ -295,7 +299,11 @@ async function setupLegacyPin() {
 
 async function completeLogin(userPin) {
   const user = selectedUser.value
-  uiStore.setActiveUser({ id: user.id, nombre: user.nombre, avatar: user.avatar })
+  uiStore.setActiveUser({
+    id: user.id, nombre: user.nombre, avatar: user.avatar,
+    esMascota: user.esMascota || false,
+    tipoMascota: user.tipoMascota || null,
+  })
   uiStore.setUserPin(userPin)
 
   // Load saved AI provider + model
@@ -330,6 +338,19 @@ async function completeLogin(userPin) {
           uiStore.setApiKey(decrypted, 'gemini')
         }
       } catch { /* ignorar */ }
+    }
+
+    // Cargar keys compartidas para proveedores sin key propia
+    for (const provId of Object.keys(AI_PROVIDERS)) {
+      if (!uiStore.getApiKeyFor(provId)) {
+        try {
+          const sharedRow = await db.settings.get(`shared_${provId}_api_key_encrypted`)
+          if (sharedRow?.value) {
+            const decrypted = await decrypt(sharedRow.value, 'MEDAPP_SHARED')
+            uiStore.setApiKey(decrypted, provId)
+          }
+        } catch { /* ignorar */ }
+      }
     }
   } catch {
     // Error inesperado al cargar configuración

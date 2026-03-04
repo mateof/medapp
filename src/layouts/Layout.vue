@@ -23,7 +23,8 @@ const routeNames = {
   MisMedicamentos: 'Inicio',
   Nuevo: 'Nuevo medicamento',
   Detalles: 'Detalles',
-  Perfil: 'Perfil',
+  Resumen: 'Resumen',
+  Perfil: 'Perfil de salud',
   Settings: 'Ajustes',
 }
 

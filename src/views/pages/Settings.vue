@@ -82,6 +82,15 @@
                   class="mb-1"
                 />
 
+                <v-checkbox
+                  v-model="shareKey"
+                  label="Compartir esta key con todos los usuarios"
+                  density="compact"
+                  hide-details
+                  class="mb-2"
+                  prepend-icon="mdi-share-variant"
+                />
+
                 <div class="d-flex align-center ga-3 flex-wrap mb-4">
                   <v-btn color="primary" @click="onSave" :loading="saving" prepend-icon="mdi-content-save">
                     Guardar
@@ -115,6 +124,9 @@
 
                 <v-alert v-if="hasEncryptedKey" type="success" variant="tonal" density="compact" class="mb-3">
                   <v-icon>mdi-shield-lock</v-icon> API key configurada y cifrada con tu PIN
+                </v-alert>
+                <v-alert v-else-if="isShared" type="info" variant="tonal" density="compact" class="mb-3">
+                  <v-icon>mdi-share-variant</v-icon> Estás usando una key compartida por otro usuario.
                 </v-alert>
                 <v-alert v-else type="info" variant="tonal" density="compact" class="mb-3">
                   <v-icon>mdi-information</v-icon> No hay API key configurada para este proveedor.
@@ -291,10 +303,10 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { getSetting, setSetting } from '@/services/storage/store'
+import { getSetting, setSetting, getSharedSetting, setSharedSetting, deleteSharedSetting } from '@/services/storage/store'
 import { testConnection, getAvailableModels } from '@/services/ai/ai'
 import { getProviderList, getProvider } from '@/services/ai/providers'
-import { encrypt } from '@/services/crypto'
+import { encrypt, decrypt as decryptKey } from '@/services/crypto'
 import { useUiStore } from '@/stores/ui'
 import { getCorsProxyUrl, setCorsProxyUrl, getStringUrl } from '@/services/http/http'
 
@@ -312,6 +324,8 @@ const saving = ref(false)
 const testing = ref(false)
 const connectionStatus = ref(null)
 const hasEncryptedKey = ref(false)
+const shareKey = ref(false)
+const isShared = ref(false)
 
 // --- URL base personalizada (servidores locales) ---
 const customBaseUrlInput = ref('')
@@ -430,10 +444,24 @@ watch(selectedProvider, async () => {
 async function loadEncryptedKey() {
   const encrypted = await getSetting(`${selectedProvider.value}_api_key_encrypted`)
   hasEncryptedKey.value = !!encrypted
+
+  // Comprobar si existe key compartida
+  const sharedEncrypted = await getSharedSetting(`${selectedProvider.value}_api_key_encrypted`)
+  isShared.value = !!sharedEncrypted
+  shareKey.value = !!sharedEncrypted
+
   // Mostrar la key descifrada del proveedor seleccionado (si está en el mapa)
   const decryptedKey = uiStore.getApiKeyFor(selectedProvider.value)
   if (encrypted && decryptedKey) {
     apiKeyInput.value = decryptedKey
+  } else if (!encrypted && sharedEncrypted) {
+    // Intentar descifrar la key compartida para mostrarla
+    try {
+      const decrypted = await decryptKey(sharedEncrypted, 'MEDAPP_SHARED')
+      apiKeyInput.value = decrypted
+    } catch {
+      apiKeyInput.value = ''
+    }
   } else {
     apiKeyInput.value = ''
   }
@@ -479,6 +507,20 @@ async function onSave() {
       saving.value = false
       return
     }
+
+    // Gestionar compartición de key
+    if (shareKey.value) {
+      try {
+        const sharedEncrypted = await encrypt(apiKeyInput.value, 'MEDAPP_SHARED')
+        await setSharedSetting(`${selectedProvider.value}_api_key_encrypted`, sharedEncrypted)
+        isShared.value = true
+      } catch {
+        showSnack('Error al compartir la API key', 'warning')
+      }
+    } else if (isShared.value) {
+      await deleteSharedSetting(`${selectedProvider.value}_api_key_encrypted`)
+      isShared.value = false
+    }
   }
 
   uiStore.setAiProvider(selectedProvider.value)
@@ -488,9 +530,14 @@ async function onSave() {
 
 async function deleteKey() {
   await setSetting(`${selectedProvider.value}_api_key_encrypted`, null)
+  if (isShared.value) {
+    await deleteSharedSetting(`${selectedProvider.value}_api_key_encrypted`)
+    isShared.value = false
+  }
   uiStore.clearApiKey(selectedProvider.value)
   apiKeyInput.value = ''
   hasEncryptedKey.value = false
+  shareKey.value = false
   connectionStatus.value = null
   modelInfo.value = null
   showSnack('API key eliminada', 'success')

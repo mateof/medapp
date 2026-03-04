@@ -11,7 +11,7 @@
           </v-card-title>
           <v-card-text>
             <p class="text-body-2 text-medium-emphasis mb-4">
-              Busca por nombre en la base de datos de CIMA (AEMPS)
+              Busca por nombre en la base de datos de {{ uiStore.activeUserEsMascota ? 'CIMAVet' : 'CIMA' }} (AEMPS)
             </p>
             <v-autocomplete
               v-model="model"
@@ -118,6 +118,57 @@
               persistent-hint
             />
           </v-card-text>
+        </v-card>
+
+        <!-- POSOLOGÍA -->
+        <v-card class="mb-6">
+          <v-card-title>
+            <v-icon class="mr-2">mdi-clock-outline</v-icon>
+            Posología
+          </v-card-title>
+          <v-card-text>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              Indica la dosis y frecuencia prescrita (opcional)
+            </p>
+            <v-row dense>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="posologiaDosis"
+                  label="Dosis"
+                  placeholder="Ej: 600 mg, 1 comprimido, 5 ml"
+                  prepend-icon="mdi-scale-balance"
+                  variant="outlined"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-combobox
+                  v-model="posologiaFrecuencia"
+                  :items="frecuenciasSugeridas"
+                  label="Frecuencia"
+                  prepend-icon="mdi-timer-outline"
+                  variant="outlined"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-combobox
+                  v-model="posologiaDuracion"
+                  :items="duracionesSugeridas"
+                  label="Duración"
+                  prepend-icon="mdi-calendar-range"
+                  variant="outlined"
+                />
+              </v-col>
+              <v-col cols="12" sm="6">
+                <v-text-field
+                  v-model="posologiaNotas"
+                  label="Notas"
+                  placeholder="Ej: Tomar con comida, en ayunas..."
+                  prepend-icon="mdi-note-text-outline"
+                  variant="outlined"
+                />
+              </v-col>
+            </v-row>
+          </v-card-text>
           <v-divider />
           <v-card-actions class="pa-4">
             <v-spacer />
@@ -183,7 +234,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getDrugsByName } from '@/services/http/http'
+import { searchDrugs } from '@/services/http/http'
 import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { checkInteracciones } from '@/services/ai/ai'
@@ -202,6 +253,20 @@ const duplicateError = ref(false)
 const chips = ref([])
 const itemsLabel = ref([])
 let searchTimerId = null
+
+// Posología
+const posologiaDosis = ref('')
+const posologiaFrecuencia = ref(null)
+const posologiaDuracion = ref(null)
+const posologiaNotas = ref('')
+const frecuenciasSugeridas = [
+  'Cada 4 horas', 'Cada 6 horas', 'Cada 8 horas',
+  'Cada 12 horas', 'Cada 24 horas', 'Según necesidad',
+]
+const duracionesSugeridas = [
+  '3 días', '5 días', '7 días', '10 días', '14 días',
+  '1 mes', '3 meses', 'Crónico', 'Según prescripción',
+]
 
 // Interacciones
 const showInteraccionDialog = ref(false)
@@ -226,7 +291,7 @@ const items = computed(() => {
 const selectedFoto = computed(() => model.value?.fotos?.[0]?.url || `${import.meta.env.BASE_URL}img/med-placeholder.png`)
 const selectedNombre = computed(() => model.value?.nombre || '')
 const selectedLab = computed(() => model.value?.labtitular || '')
-const selectedPA = computed(() => model.value?.vtm?.nombre || '')
+const selectedPA = computed(() => model.value?.vtm?.nombre || model.value?.pactivos || '')
 const selectedForma = computed(() => {
   const ff = model.value?.formaFarmaceutica
   if (!ff) return ''
@@ -236,8 +301,8 @@ const selectedDosis = computed(() => model.value?.dosis || '')
 const prospectoUrl = computed(() => {
   const docs = model.value?.docs
   if (!docs) return null
-  const doc = docs.find(d => d.tipo === 2 && d.urlHtml)
-  return doc?.urlHtml || null
+  const doc = docs.find(d => d.tipo === 2 && (d.urlHtml || d.url))
+  return doc?.urlHtml || doc?.url || null
 })
 
 function fuzzyMatch(a, b) {
@@ -324,7 +389,7 @@ function onSearch(val) {
 }
 
 async function buscar(val) {
-  const p = await getDrugsByName(val)
+  const p = await searchDrugs(val, uiStore.activeUserEsMascota)
   entries.value = p.resultados
 }
 
@@ -385,8 +450,17 @@ function cancelAdd() {
   pendingInteraccion.value = null
 }
 
+function buildPosologia() {
+  const d = posologiaDosis.value?.trim()
+  const f = posologiaFrecuencia.value?.trim?.() || posologiaFrecuencia.value || ''
+  const du = posologiaDuracion.value?.trim?.() || posologiaDuracion.value || ''
+  const n = posologiaNotas.value?.trim()
+  if (!d && !f && !du && !n) return null
+  return { dosis: d || null, frecuencia: f || null, duracion: du || null, notas: n || null }
+}
+
 async function doAdd() {
-  await addMedicamento(model.value, chips.value)
+  await addMedicamento(model.value, chips.value, buildPosologia())
   if (pendingInteraccion.value) {
     await saveInteraccion(pendingInteraccion.value)
     pendingInteraccion.value = null

@@ -40,9 +40,14 @@ const routes = [
         meta: { breadCrumb: 'Detalles' },
       },
       {
+        name: 'Resumen',
+        path: 'resumen',
+        component: () => import('@/views/dashboard/BasicDashboard.vue'),
+      },
+      {
         name: 'Perfil',
         path: 'perfil',
-        component: () => import('@/views/dashboard/BasicDashboard.vue'),
+        component: () => import('@/views/pages/HealthProfile.vue'),
       },
       {
         name: 'Settings',

@@ -19,7 +19,7 @@ export async function userNameExists(nombre, excludeId = null) {
   return all.some(u => u.nombre.toLowerCase() === normalized && u.id !== excludeId)
 }
 
-export async function createUser({ nombre, pin, avatar }) {
+export async function createUser({ nombre, pin, avatar, enfermedades_cronicas, alergias, peculiaridades, esMascota, tipoMascota, peso, edad, genero }) {
   if (await userNameExists(nombre)) {
     throw new Error('Ya existe un usuario con ese nombre')
   }
@@ -28,8 +28,31 @@ export async function createUser({ nombre, pin, avatar }) {
     nombre,
     pin_check: pinCheck,
     avatar: avatar || null,
+    enfermedades_cronicas: enfermedades_cronicas || [],
+    alergias: alergias || [],
+    peculiaridades: peculiaridades || [],
+    esMascota: esMascota || false,
+    tipoMascota: tipoMascota || null,
+    peso: peso || null,
+    edad: edad || null,
+    genero: genero || null,
     createdAt: new Date().toISOString()
   })
+}
+
+export async function getUserProfile(userId) {
+  const user = await db.usuarios.get(userId)
+  if (!user) return null
+  return {
+    enfermedades_cronicas: user.enfermedades_cronicas || [],
+    alergias: user.alergias || [],
+    peculiaridades: user.peculiaridades || [],
+    esMascota: user.esMascota || false,
+    tipoMascota: user.tipoMascota || null,
+    peso: user.peso || null,
+    edad: user.edad || null,
+    genero: user.genero || null,
+  }
 }
 
 export async function updateUser(id, updates) {

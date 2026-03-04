@@ -105,6 +105,35 @@
             </v-col>
           </v-row>
 
+          <!-- POSOLOGÍA PRESCRITA -->
+          <v-card v-if="medicamento?.posologia" class="mb-6">
+            <v-card-title>
+              <v-icon class="mr-2">mdi-clock-outline</v-icon>
+              Posología prescrita
+            </v-card-title>
+            <v-divider />
+            <v-card-text>
+              <v-row dense>
+                <v-col v-if="medicamento.posologia.dosis" cols="12" sm="6" md="3">
+                  <div class="text-caption text-medium-emphasis">Dosis</div>
+                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.dosis }}</div>
+                </v-col>
+                <v-col v-if="medicamento.posologia.frecuencia" cols="12" sm="6" md="3">
+                  <div class="text-caption text-medium-emphasis">Frecuencia</div>
+                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.frecuencia }}</div>
+                </v-col>
+                <v-col v-if="medicamento.posologia.duracion" cols="12" sm="6" md="3">
+                  <div class="text-caption text-medium-emphasis">Duración</div>
+                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.duracion }}</div>
+                </v-col>
+                <v-col v-if="medicamento.posologia.notas" cols="12" sm="6" md="3">
+                  <div class="text-caption text-medium-emphasis">Notas</div>
+                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.notas }}</div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
+
           <!-- PROBLEMA DE SUMINISTRO -->
           <v-card v-if="psum" class="mb-6">
             <v-expansion-panels>
@@ -245,7 +274,7 @@ import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
-import { getMedicamentoByIdFromUrl } from '@/services/http/http'
+import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
 import { checkInteracciones } from '@/services/ai/ai'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
@@ -275,7 +304,7 @@ const fotos = computed(() => {
 const nombre = computed(() => medicamento.value?.name || '')
 const enfermedades = computed(() => medicamento.value?.enfermedades || [])
 const laboratorio = computed(() => medicamento.value?.data?.labtitular || '')
-const principioActivo = computed(() => medicamento.value?.data?.vtm?.nombre || '')
+const principioActivo = computed(() => medicamento.value?.data?.vtm?.nombre || medicamento.value?.data?.pactivos || '')
 const nregistro = computed(() => medicamento.value?.data?.nregistro || '')
 
 const estado = computed(() => {
@@ -341,7 +370,7 @@ onMounted(async () => {
   const medId = Number(route.params.id)
   medicamento.value = await getMedicamentoById(medId)
   files.value = getDocumentsFromDrug(medicamento.value.data.docs)
-  const restData = await getMedicamentoByIdFromUrl(medicamento.value.data.nregistro)
+  const restData = await getMedicamentoDetalle(medicamento.value.data.nregistro, uiStore.activeUserEsMascota)
   presentaciones.value = getPresentacionesPSum(restData)
   psum.value = presentaciones.value.length > 0
   loaded.value = true

@@ -75,6 +75,108 @@
               :error-messages="confirmPinError"
               @keyup.enter="doRegister"
             />
+
+            <v-divider class="my-4" />
+
+            <div
+              class="d-flex align-center mb-2"
+              style="cursor: pointer"
+              @click="showHealthFields = !showHealthFields"
+            >
+              <v-icon class="mr-2">mdi-heart-pulse</v-icon>
+              <span class="text-body-2">Perfil de salud (opcional)</span>
+              <v-spacer />
+              <v-icon>{{ showHealthFields ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+            </div>
+
+            <v-expand-transition>
+              <div v-if="showHealthFields">
+                <v-btn-toggle v-model="esMascota" mandatory color="primary" density="compact" class="mb-4">
+                  <v-btn :value="false"><v-icon class="mr-1">mdi-account</v-icon> Humano</v-btn>
+                  <v-btn :value="true"><v-icon class="mr-1">mdi-paw</v-icon> Mascota</v-btn>
+                </v-btn-toggle>
+
+                <v-select
+                  v-if="esMascota"
+                  v-model="tipoMascota"
+                  :items="tiposMascota"
+                  label="Tipo de mascota"
+                  prepend-icon="mdi-paw"
+                  variant="outlined"
+                  class="mb-2"
+                />
+
+                <v-row dense class="mb-2">
+                  <v-col cols="4">
+                    <v-text-field
+                      v-model.number="edad"
+                      type="number"
+                      label="Edad"
+                      prepend-icon="mdi-calendar-account"
+                      variant="outlined"
+                      min="0"
+                      max="200"
+                    />
+                  </v-col>
+                  <v-col cols="4">
+                    <v-text-field
+                      v-model.number="peso"
+                      type="number"
+                      label="Peso (kg)"
+                      prepend-icon="mdi-weight-kilogram"
+                      variant="outlined"
+                      min="0"
+                      step="0.1"
+                    />
+                  </v-col>
+                  <v-col cols="4">
+                    <v-select
+                      v-model="genero"
+                      :items="generosDisponibles"
+                      label="Género"
+                      prepend-icon="mdi-gender-male-female"
+                      variant="outlined"
+                      clearable
+                    />
+                  </v-col>
+                </v-row>
+
+                <v-combobox
+                  v-model="enfermedadesCronicas"
+                  :items="enfermedadesSugeridas"
+                  chips
+                  closable-chips
+                  clearable
+                  multiple
+                  label="Enfermedades crónicas"
+                  variant="outlined"
+                  class="mb-2"
+                />
+
+                <v-combobox
+                  v-model="alergiasList"
+                  :items="alergiasSugeridas"
+                  chips
+                  closable-chips
+                  clearable
+                  multiple
+                  label="Alergias a medicamentos"
+                  variant="outlined"
+                  class="mb-2"
+                />
+
+                <v-combobox
+                  v-model="peculiaridadesList"
+                  :items="peculiaridadesSugeridas"
+                  chips
+                  closable-chips
+                  clearable
+                  multiple
+                  label="Otras peculiaridades"
+                  variant="outlined"
+                />
+              </div>
+            </v-expand-transition>
           </v-card-text>
 
           <v-divider />
@@ -124,6 +226,32 @@ const avatarBase64 = ref(null)
 
 const nombreError = ref('')
 
+// Health profile fields
+const showHealthFields = ref(false)
+const esMascota = ref(false)
+const tipoMascota = ref(null)
+const edad = ref(null)
+const peso = ref(null)
+const genero = ref(null)
+const enfermedadesCronicas = ref([])
+const alergiasList = ref([])
+const peculiaridadesList = ref([])
+
+const generosDisponibles = ['Masculino', 'Femenino', 'Otro']
+
+const tiposMascota = ['Perro', 'Gato', 'Ave', 'Conejo', 'Reptil', 'Pez', 'Otro']
+const enfermedadesSugeridas = [
+  'Diabetes', 'Hipertensión', 'Asma', 'EPOC', 'Artritis',
+  'Hipotiroidismo', 'Insuficiencia renal', 'Cardiopatía', 'Epilepsia',
+]
+const alergiasSugeridas = [
+  'Penicilina', 'Amoxicilina', 'Sulfamidas', 'AINEs', 'Ibuprofeno',
+  'Aspirina', 'Cefalosporinas',
+]
+const peculiaridadesSugeridas = [
+  'Embarazo', 'Lactancia', 'Edad avanzada', 'Menor de edad',
+]
+
 const pinRules = [v => v.length >= 4 || 'Mínimo 4 dígitos', v => /^\d+$/.test(v) || 'Solo dígitos']
 
 const confirmPinError = computed(() => {
@@ -172,13 +300,23 @@ async function doRegister() {
   const userId = await createUser({
     nombre: nombre.value.trim(),
     pin: pin.value,
-    avatar: avatarBase64.value
+    avatar: avatarBase64.value,
+    enfermedades_cronicas: JSON.parse(JSON.stringify(enfermedadesCronicas.value)),
+    alergias: JSON.parse(JSON.stringify(alergiasList.value)),
+    peculiaridades: JSON.parse(JSON.stringify(peculiaridadesList.value)),
+    esMascota: esMascota.value,
+    tipoMascota: esMascota.value ? tipoMascota.value : null,
+    edad: edad.value || null,
+    peso: peso.value || null,
+    genero: genero.value || null,
   })
 
   uiStore.setActiveUser({
     id: userId,
     nombre: nombre.value.trim(),
-    avatar: avatarBase64.value
+    avatar: avatarBase64.value,
+    esMascota: esMascota.value,
+    tipoMascota: esMascota.value ? tipoMascota.value : null,
   })
   uiStore.setUserPin(pin.value)
   uiStore.setSessionReady(true)
