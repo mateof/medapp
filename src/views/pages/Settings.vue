@@ -227,6 +227,7 @@
             <p class="text-body-2 text-medium-emphasis mb-4">
               Configura un proxy CORS para que la IA pueda descargar los prospectos de CIMA y usarlos al analizar interacciones.
               Sin proxy, el análisis se realizará sin información de prospectos.
+              <a href="https://github.com/mateof/proxy-cors-server" target="_blank" rel="noopener">Ejemplo de proxy CORS propio</a>.
             </p>
 
             <v-text-field

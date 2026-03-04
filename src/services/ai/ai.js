@@ -7,7 +7,7 @@ import { getSetting } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt } from './prompt'
-import { fetchProspectos } from './gemini'
+import { fetchProspectos, fetchProspectosPdf } from './gemini'
 import * as geminiProvider from './gemini'
 import * as openaiProvider from './openai'
 import * as anthropicProvider from './anthropic'
@@ -56,8 +56,9 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
   // Cargar perfil de salud del usuario
   const perfil = await getUserProfile(store.activeUserId)
 
-  // CIMAVet (mascotas) no tiene prospectos HTML, solo PDF
-  const prospectos = perfil?.esMascota ? [] : await fetchProspectos(medicamentos)
+  const prospectos = perfil?.esMascota
+    ? await fetchProspectosPdf(medicamentos)
+    : await fetchProspectos(medicamentos)
 
   const prompt = buildPrompt(medicamentos, enfermedades, prospectos, perfil)
 

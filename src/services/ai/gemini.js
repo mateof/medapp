@@ -1,5 +1,8 @@
 import axios from 'axios'
-import { getStringUrl, resolveCimaUrl } from '../http/http'
+import { getStringUrl, resolveCimaUrl, resolveCimaVetUrl } from '../http/http'
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
+
+GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta'
 
@@ -99,6 +102,42 @@ export async function fetchProspectos(medicamentos) {
         }
     }
     return prospectos
+}
+
+/**
+ * Descarga prospectos PDF de CIMAVet, extrae el texto y lo devuelve.
+ */
+export async function fetchProspectosPdf(medicamentos) {
+    const prospectos = []
+    for (const med of medicamentos) {
+        const docs = med.data?.docs
+        if (!docs) continue
+        const prospecto = docs.find(d => d.tipo === 2 && d.url)
+        if (!prospecto) continue
+        try {
+            const url = resolveCimaVetUrl(prospecto.url)
+            const response = await axios.get(url, { responseType: 'arraybuffer' })
+            const texto = await extractTextFromPdf(response.data)
+            if (texto) {
+                prospectos.push({ nombre: med.name || med.data?.nombre, texto: texto.slice(0, 4000) })
+            }
+        } catch {
+            // Si falla la descarga o extracción, continuamos sin este prospecto
+        }
+    }
+    return prospectos
+}
+
+async function extractTextFromPdf(arrayBuffer) {
+    const pdf = await getDocument({ data: arrayBuffer }).promise
+    const pages = []
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        const text = content.items.map(item => item.str).join(' ')
+        pages.push(text)
+    }
+    return pages.join('\n').replace(/\s+/g, ' ').trim()
 }
 
 function stripHtml(html) {
