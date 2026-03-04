@@ -118,6 +118,8 @@ export const useUiStore = defineStore('ui', () => {
     activeUserAvatar.value = null
     userPin.value = null
     apiKeys.value = {}
+    aiProvider.value = 'gemini'
+    aiModel.value = 'gemini-2.5-flash'
     activeUserEsMascota.value = false
     activeUserTipoMascota.value = null
     sessionReady.value = false
@@ -135,6 +137,8 @@ export const useUiStore = defineStore('ui', () => {
     activeUserAvatar.value = null
     userPin.value = null
     apiKeys.value = {}
+    aiProvider.value = 'gemini'
+    aiModel.value = 'gemini-2.5-flash'
     activeUserEsMascota.value = false
     activeUserTipoMascota.value = null
     sessionReady.value = false

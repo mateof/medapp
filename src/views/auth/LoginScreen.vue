@@ -314,7 +314,8 @@ async function completeLogin(userPin) {
     uiStore.setAiProvider(provider)
 
     const modelRow = await db.settings.get(`${prefix}ai_model`) || await db.settings.get(`${prefix}gemini_model`)
-    if (modelRow?.value) uiStore.setAiModel(modelRow.value)
+    const defaultModel = AI_PROVIDERS[provider]?.defaultModel || 'gemini-2.5-flash'
+    uiStore.setAiModel(modelRow?.value || defaultModel)
 
     // Descifrar API keys de TODOS los proveedores configurados
     for (const provId of Object.keys(AI_PROVIDERS)) {

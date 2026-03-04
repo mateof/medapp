@@ -117,6 +117,10 @@ export async function fetchProspectosPdf(medicamentos) {
         try {
             const url = resolveCimaVetUrl(prospecto.url)
             const response = await axios.get(url, { responseType: 'arraybuffer' })
+            // Verificar que la respuesta es un PDF y no HTML (error/redirección)
+            const bytes = new Uint8Array(response.data, 0, 5)
+            const header = String.fromCharCode(...bytes)
+            if (header !== '%PDF-') continue
             const texto = await extractTextFromPdf(response.data)
             if (texto) {
                 prospectos.push({ nombre: med.name || med.data?.nombre, texto: texto.slice(0, 4000) })
