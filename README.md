@@ -2,7 +2,22 @@
 
 **[Acceder a la aplicación](https://mateof.github.io/medapp/)**
 
-Aplicación web progresiva (PWA) para la gestión personal de medicamentos, interacciones farmacológicas y contraindicaciones. Los datos se almacenan localmente en el navegador mediante IndexedDB, sin necesidad de servidor ni cuenta externa.
+Aplicación web progresiva (PWA) para la gestión personal de medicamentos, posología, interacciones farmacológicas y contraindicaciones. Podrás gestionar **tus medicamentos**, el de tus **familiares** o el de tus **mascotas**. Los datos se almacenan localmente en el navegador mediante IndexedDB, sin necesidad de servidor ni cuenta externa.
+
+### Humanos
+
+<img width="4424" height="1942" alt="image" src="https://github.com/user-attachments/assets/29187a27-6251-4143-bbcd-f83bffe03bbf" />
+
+### Mascota
+
+#### Perfil
+
+<img width="2213" height="1165" alt="image" src="https://github.com/user-attachments/assets/c5085595-11b2-4df1-92d1-04ee6c57b375" />
+
+#### Resultado de análisis de medicación
+
+<img width="2215" height="985" alt="image" src="https://github.com/user-attachments/assets/9c8839dc-f2e0-4292-9c0b-1e039d7749cd" />
+
 
 ## Propósito
 
