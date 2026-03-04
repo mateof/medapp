@@ -60,6 +60,7 @@ export async function addMedicamento(m, etiquetas = [], posologia = null) {
             detalle: `Etiqueta "${tag}" asignada a ${plain.nombre}`
         });
     }
+    return id
 }
 
 export async function getMedicamentos() {

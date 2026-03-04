@@ -478,8 +478,9 @@ function buildPosologia() {
 }
 
 async function doAdd() {
-  await addMedicamento(model.value, chips.value, buildPosologia())
+  const newId = await addMedicamento(model.value, chips.value, buildPosologia())
   if (pendingInteraccion.value) {
+    pendingInteraccion.value.medIds = [...pendingInteraccion.value.medIds, newId]
     await saveInteraccion(pendingInteraccion.value)
     pendingInteraccion.value = null
   }

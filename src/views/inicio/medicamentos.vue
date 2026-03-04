@@ -255,29 +255,39 @@ function filterInteraccionesForMed(resultado, med) {
   const nameLower = med.name.toLowerCase()
   const pa = med.data?.vtm?.nombre?.toLowerCase() || med.data?.pactivos?.toLowerCase() || ''
 
+  const matchName = (m) => namesOverlap(m, nameLower) || (pa && m.toLowerCase().includes(pa))
+
   const interacciones = (resultado.interacciones || []).filter(inter =>
-    (inter.medicamentos || []).some(m =>
-      namesOverlap(m, nameLower) || (pa && m.toLowerCase().includes(pa))
-    )
+    (inter.medicamentos || []).some(m => matchName(m))
   )
   const contraindicaciones = (resultado.contraindicaciones_enfermedad || []).filter(ci =>
-    ci.medicamento && (
-      namesOverlap(ci.medicamento, nameLower) || (pa && ci.medicamento.toLowerCase().includes(pa))
-    )
+    ci.medicamento && matchName(ci.medicamento)
+  )
+  const contraindicacionesAlergia = (resultado.contraindicaciones_alergia || []).filter(ca =>
+    ca.medicamento && matchName(ca.medicamento)
+  )
+  const observacionesPosologia = (resultado.observaciones_posologia || []).filter(op =>
+    op.medicamento && matchName(op.medicamento)
   )
 
-  if (interacciones.length === 0 && contraindicaciones.length === 0) return null
+  if (interacciones.length === 0 && contraindicaciones.length === 0 &&
+      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0) return null
 
   let maxSev = getMaxSeveridad(interacciones.map(i => i.severidad))
-  if (maxSev === 'ninguna' && contraindicaciones.length > 0) {
+  if (maxSev === 'ninguna' && (contraindicaciones.length > 0 || contraindicacionesAlergia.length > 0)) {
     maxSev = 'contraindicacion'
+  }
+  if (maxSev === 'ninguna' && observacionesPosologia.length > 0) {
+    maxSev = 'leve'
   }
 
   return {
     severidad: maxSev,
     resumen: resultado.resumen,
     interacciones,
-    contraindicaciones
+    contraindicaciones,
+    contraindicaciones_alergia: contraindicacionesAlergia,
+    observaciones_posologia: observacionesPosologia
   }
 }
 
