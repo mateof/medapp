@@ -50,19 +50,19 @@
               Datos básicos
             </h3>
             <v-row dense class="mb-4">
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="3">
                 <v-text-field
                   v-model.number="edad"
                   type="number"
                   label="Edad"
                   prepend-icon="mdi-calendar-account"
                   variant="outlined"
-                  :suffix="esMascota ? 'años' : 'años'"
+                  suffix="años"
                   min="0"
                   max="200"
                 />
               </v-col>
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="3">
                 <v-text-field
                   v-model.number="peso"
                   type="number"
@@ -74,7 +74,19 @@
                   step="0.1"
                 />
               </v-col>
-              <v-col cols="12" sm="4">
+              <v-col cols="12" sm="3">
+                <v-text-field
+                  v-model.number="altura"
+                  type="number"
+                  label="Altura"
+                  prepend-icon="mdi-human-male-height"
+                  variant="outlined"
+                  suffix="cm"
+                  min="0"
+                  max="300"
+                />
+              </v-col>
+              <v-col cols="12" sm="3">
                 <v-select
                   v-model="genero"
                   :items="generosDisponibles"
@@ -182,6 +194,7 @@ const esMascota = ref(false)
 const tipoMascota = ref(null)
 const edad = ref(null)
 const peso = ref(null)
+const altura = ref(null)
 const genero = ref(null)
 const enfermedadesCronicas = ref([])
 const alergias = ref([])
@@ -218,6 +231,7 @@ onMounted(async () => {
     tipoMascota.value = user.tipoMascota || null
     edad.value = user.edad || null
     peso.value = user.peso || null
+    altura.value = user.altura || null
     genero.value = user.genero || null
     enfermedadesCronicas.value = user.enfermedades_cronicas || []
     alergias.value = user.alergias || []
@@ -235,6 +249,7 @@ async function save() {
     tipoMascota: esMascota.value ? tipoMascota.value : null,
     edad: edad.value || null,
     peso: peso.value || null,
+    altura: altura.value || null,
     genero: genero.value || null,
   }
   await updateUser(uiStore.activeUserId, updates)

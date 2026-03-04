@@ -236,6 +236,7 @@ import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { searchDrugs } from '@/services/http/http'
 import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
+import { getUserProfile } from '@/services/storage/users'
 import { useUiStore } from '@/stores/ui'
 import { checkInteracciones } from '@/services/ai/ai'
 import interacciones from '@/components/commonComponents/medicamentos/interacciones.vue'
@@ -402,14 +403,31 @@ async function call() {
   const apiKey = uiStore.apiKey
   const existingMeds = await getMedicamentos()
 
-  if (apiKey && existingMeds.length > 0) {
+  // Comprobar si hay datos suficientes para analizar aunque sea el primer medicamento
+  const hasPosologia = !!buildPosologia()
+  let hasProfileData = false
+  if (apiKey && existingMeds.length === 0) {
+    const perfil = await getUserProfile(uiStore.activeUserId)
+    hasProfileData = !!(
+      perfil &&
+      (perfil.enfermedades_cronicas?.length > 0 ||
+       perfil.alergias?.length > 0 ||
+       perfil.peculiaridades?.length > 0 ||
+       chips.value.length > 0 ||
+       hasPosologia)
+    )
+  }
+
+  const shouldCheck = apiKey && (existingMeds.length > 0 || hasProfileData)
+
+  if (shouldCheck) {
     showInteraccionDialog.value = true
     checkingInteracciones.value = true
     interaccionResult.value = null
     interaccionError.value = null
 
     try {
-      const newMed = { name: model.value.nombre, data: model.value, enfermedades: chips.value }
+      const newMed = { name: model.value.nombre, data: model.value, enfermedades: chips.value, posologia: buildPosologia() }
       const allMeds = [...existingMeds, newMed]
       const allEnfermedades = [...new Set([
         ...existingMeds.flatMap(m => m.enfermedades || []),

@@ -178,7 +178,7 @@
                   :hint="activeProvider.customBaseUrl ? 'Escribe el nombre del modelo o selecciona uno de la lista' : 'Modelo que se usará para analizar interacciones'"
                   persistent-hint
                 />
-                <v-select
+                <v-autocomplete
                   v-else-if="showModelSelect"
                   :model-value="selectedModel"
                   @update:model-value="onModelChange"
@@ -190,6 +190,7 @@
                   variant="outlined"
                   hint="Modelo que se usará para analizar interacciones"
                   persistent-hint
+                  auto-select-first
                 >
                   <template #item="{ item, props: itemProps }">
                     <v-list-item v-bind="itemProps">
@@ -203,7 +204,7 @@
                       </template>
                     </v-list-item>
                   </template>
-                </v-select>
+                </v-autocomplete>
 
                 <!-- Enlace para obtener key -->
                 <v-card variant="outlined" class="pa-3 mt-3" flat>

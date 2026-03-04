@@ -107,7 +107,7 @@
                 />
 
                 <v-row dense class="mb-2">
-                  <v-col cols="4">
+                  <v-col cols="6" sm="3">
                     <v-text-field
                       v-model.number="edad"
                       type="number"
@@ -118,7 +118,7 @@
                       max="200"
                     />
                   </v-col>
-                  <v-col cols="4">
+                  <v-col cols="6" sm="3">
                     <v-text-field
                       v-model.number="peso"
                       type="number"
@@ -129,7 +129,18 @@
                       step="0.1"
                     />
                   </v-col>
-                  <v-col cols="4">
+                  <v-col cols="6" sm="3">
+                    <v-text-field
+                      v-model.number="altura"
+                      type="number"
+                      label="Altura (cm)"
+                      prepend-icon="mdi-human-male-height"
+                      variant="outlined"
+                      min="0"
+                      max="300"
+                    />
+                  </v-col>
+                  <v-col cols="6" sm="3">
                     <v-select
                       v-model="genero"
                       :items="generosDisponibles"
@@ -232,6 +243,7 @@ const esMascota = ref(false)
 const tipoMascota = ref(null)
 const edad = ref(null)
 const peso = ref(null)
+const altura = ref(null)
 const genero = ref(null)
 const enfermedadesCronicas = ref([])
 const alergiasList = ref([])
@@ -308,6 +320,7 @@ async function doRegister() {
     tipoMascota: esMascota.value ? tipoMascota.value : null,
     edad: edad.value || null,
     peso: peso.value || null,
+    altura: altura.value || null,
     genero: genero.value || null,
   })
 

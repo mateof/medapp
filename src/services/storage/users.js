@@ -19,7 +19,7 @@ export async function userNameExists(nombre, excludeId = null) {
   return all.some(u => u.nombre.toLowerCase() === normalized && u.id !== excludeId)
 }
 
-export async function createUser({ nombre, pin, avatar, enfermedades_cronicas, alergias, peculiaridades, esMascota, tipoMascota, peso, edad, genero }) {
+export async function createUser({ nombre, pin, avatar, enfermedades_cronicas, alergias, peculiaridades, esMascota, tipoMascota, peso, edad, genero, altura }) {
   if (await userNameExists(nombre)) {
     throw new Error('Ya existe un usuario con ese nombre')
   }
@@ -36,6 +36,7 @@ export async function createUser({ nombre, pin, avatar, enfermedades_cronicas, a
     peso: peso || null,
     edad: edad || null,
     genero: genero || null,
+    altura: altura || null,
     createdAt: new Date().toISOString()
   })
 }
@@ -52,6 +53,7 @@ export async function getUserProfile(userId) {
     peso: user.peso || null,
     edad: user.edad || null,
     genero: user.genero || null,
+    altura: user.altura || null,
   }
 }
 

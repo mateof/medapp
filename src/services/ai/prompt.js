@@ -38,6 +38,9 @@ export function buildPrompt(medicamentos, enfermedades, prospectos, perfil = nul
     if (perfil.peso) {
       parts.push(`PESO: ${perfil.peso} kg`)
     }
+    if (perfil.altura) {
+      parts.push(`ALTURA: ${perfil.altura} cm`)
+    }
     if (perfil.genero) {
       parts.push(`GÉNERO: ${perfil.genero}`)
     }
