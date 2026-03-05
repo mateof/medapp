@@ -9,6 +9,10 @@ export default defineConfig({
   base: process.env.GITHUB_ACTIONS ? '/medapp/' : '/',
   define: {
     __APP_VERSION__: JSON.stringify(version),
+    __SENTRY_DSN__: JSON.stringify(process.env.SENTRY_DSN || ''),
+  },
+  build: {
+    sourcemap: true,
   },
   plugins: [
     vue(),

@@ -1,6 +1,6 @@
 {
   "name": "MedApp",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "author": "Mateo",
   "description": "MedApp",
   "main": "index.html",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
+    "@sentry/vue": "^10.42.0",
     "axios": "^1.7.9",
     "chart.js": "^4.4.7",
     "date-fns": "^3.6.0",
