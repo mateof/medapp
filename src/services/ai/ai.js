@@ -7,7 +7,7 @@ import { getSetting } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt } from './prompt'
-import { fetchProspectos, fetchProspectosPdf } from './gemini'
+import { fetchProspectos, fetchProspectosPdf, calcMaxCharsPerProspecto } from './gemini'
 import * as geminiProvider from './gemini'
 import * as openaiProvider from './openai'
 import * as anthropicProvider from './anthropic'
@@ -56,9 +56,12 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
   // Cargar perfil de salud del usuario
   const perfil = await getUserProfile(store.activeUserId)
 
+  const contextTokens = provider.defaultContextTokens || 128000
+  const maxChars = calcMaxCharsPerProspecto(medicamentos.length, contextTokens)
+
   const prospectos = perfil?.esMascota
-    ? await fetchProspectosPdf(medicamentos)
-    : await fetchProspectos(medicamentos)
+    ? await fetchProspectosPdf(medicamentos, maxChars)
+    : await fetchProspectos(medicamentos, maxChars)
 
   const prompt = buildPrompt(medicamentos, enfermedades, prospectos, perfil)
 

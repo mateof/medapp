@@ -83,9 +83,27 @@ export async function getAvailableModels(apiKey, provider) {
 }
 
 /**
+ * Calcula el máximo de caracteres por prospecto según el contexto del modelo.
+ * @param {number} numMeds - Número de medicamentos
+ * @param {number} contextTokens - Tokens máximos del modelo
+ * @returns {number} Máximo de caracteres por prospecto
+ */
+export function calcMaxCharsPerProspecto(numMeds, contextTokens = 128000) {
+    const CHARS_PER_TOKEN = 4
+    const RESERVE_CHARS = 10000 // Reserva para prompt, schema y respuesta
+    const MAX_CAP = 50000
+    const MIN_FLOOR = 2000
+
+    const availableChars = (contextTokens * CHARS_PER_TOKEN) - RESERVE_CHARS
+    const perMed = Math.floor(availableChars / Math.max(numMeds, 1))
+
+    return Math.max(Math.min(perMed, MAX_CAP), MIN_FLOOR)
+}
+
+/**
  * Descarga prospectos de CIMA para enriquecer el prompt.
  */
-export async function fetchProspectos(medicamentos) {
+export async function fetchProspectos(medicamentos, maxChars = 4000) {
     const prospectos = []
     for (const med of medicamentos) {
         const docs = med.data?.docs
@@ -95,7 +113,7 @@ export async function fetchProspectos(medicamentos) {
         try {
             const url = resolveCimaUrl(prospecto.urlHtml)
             const html = await getStringUrl(url)
-            const texto = stripHtml(html).slice(0, 4000)
+            const texto = stripHtml(html).slice(0, maxChars)
             prospectos.push({ nombre: med.name || med.data?.nombre, texto })
         } catch {
             // Si falla la descarga, continuamos sin este prospecto
@@ -107,7 +125,7 @@ export async function fetchProspectos(medicamentos) {
 /**
  * Descarga prospectos PDF de CIMAVet, extrae el texto y lo devuelve.
  */
-export async function fetchProspectosPdf(medicamentos) {
+export async function fetchProspectosPdf(medicamentos, maxChars = 4000) {
     const prospectos = []
     for (const med of medicamentos) {
         const docs = med.data?.docs
@@ -123,7 +141,7 @@ export async function fetchProspectosPdf(medicamentos) {
             if (header !== '%PDF-') continue
             const texto = await extractTextFromPdf(response.data)
             if (texto) {
-                prospectos.push({ nombre: med.name || med.data?.nombre, texto: texto.slice(0, 4000) })
+                prospectos.push({ nombre: med.name || med.data?.nombre, texto: texto.slice(0, maxChars) })
             }
         } catch {
             // Si falla la descarga o extracción, continuamos sin este prospecto
@@ -148,11 +166,24 @@ function stripHtml(html) {
     return html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
+        .replace(/<nav[^>]*>[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+        .replace(/<header[^>]*>[\s\S]*?<\/header>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<\/li>/gi, '\n')
+        .replace(/<\/tr>/gi, '\n')
+        .replace(/<\/h[1-6]>/gi, '\n')
         .replace(/<[^>]+>/g, ' ')
         .replace(/&nbsp;/g, ' ')
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
-        .replace(/\s+/g, ' ')
+        .replace(/&quot;/g, '"')
+        .replace(/&#?\w+;/g, ' ')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n\s*\n+/g, '\n')
         .trim()
 }
