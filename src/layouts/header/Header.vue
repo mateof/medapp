@@ -1,11 +1,12 @@
 <template>
-  <v-app-bar color="primary" elevation="2" density="comfortable">
+  <v-app-bar :color="uiStore.activeUserEsMascota ? 'teal-darken-1' : 'primary'" elevation="2" density="comfortable">
     <v-app-bar-nav-icon
       @click="toggleSidebar"
     />
     <v-app-bar-title class="d-flex align-center" style="cursor: pointer" @click="goTo('/medicamentos')">
       <img src="../../assets/MedApp-pills.png" height="28" class="mr-2" />
       <span class="font-weight-bold">MedApp</span>
+      <v-icon v-if="uiStore.activeUserEsMascota" size="20" class="ml-2">mdi-paw</v-icon>
     </v-app-bar-title>
     <v-spacer />
     <v-btn

@@ -111,6 +111,8 @@ export const useUiStore = defineStore('ui', () => {
         apiKeys: { ...apiKeys.value },
         aiProvider: aiProvider.value,
         aiModel: aiModel.value,
+        esMascota: activeUserEsMascota.value,
+        tipoMascota: activeUserTipoMascota.value,
       }
     }
     activeUserId.value = null
