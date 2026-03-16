@@ -28,19 +28,19 @@
                   <v-img :src="getFoto(item)" />
                 </v-avatar>
                 <div style="min-width: 0" class="flex-grow-1">
-                  <div class="d-flex align-center">
-                    <span class="text-body-1 font-weight-medium text-truncate">{{ item.name }}</span>
+                  <div class="d-flex align-center flex-wrap" style="gap: 4px">
+                    <span class="text-body-1 font-weight-medium med-name">{{ item.name }}</span>
                     <v-chip
                       v-if="getSeveridad(item.id)"
                       :color="getSeveridadColor(item.id)"
                       size="x-small"
                       variant="tonal"
-                      class="ml-2 flex-shrink-0"
+                      class="flex-shrink-0"
                     >
                       {{ getSeveridadLabel(item.id) }}
                     </v-chip>
                   </div>
-                  <div class="text-caption text-medium-emphasis text-truncate">
+                  <div class="text-caption text-medium-emphasis med-subtitle">
                     {{ item.data.labtitular || '' }}
                   </div>
                   <div v-if="item.enfermedades?.length" class="d-flex flex-wrap ga-1 mt-1">
@@ -66,33 +66,33 @@
                   <v-btn
                     icon
                     variant="text"
-                    size="small"
+                    :size="isMobile ? 'x-small' : 'small'"
                     @click.stop="goToDetails(item)"
                     title="Ver detalles"
                   >
-                    <v-icon size="20">mdi-information-outline</v-icon>
+                    <v-icon :size="isMobile ? 18 : 20">mdi-information-outline</v-icon>
                   </v-btn>
                   <v-btn
                     v-if="hasProspecto(item)"
                     icon
                     variant="text"
-                    size="small"
+                    :size="isMobile ? 'x-small' : 'small'"
                     @click.stop="openPDF(item)"
                     title="Ver prospecto"
                   >
-                    <v-icon size="20">mdi-file-document-outline</v-icon>
+                    <v-icon :size="isMobile ? 18 : 20">mdi-file-document-outline</v-icon>
                   </v-btn>
                   <v-btn
                     icon
                     variant="text"
-                    size="small"
+                    :size="isMobile ? 'x-small' : 'small'"
                     color="error"
                     @click.stop="deletemed(item)"
                     title="Eliminar"
                   >
-                    <v-icon size="20">mdi-delete-outline</v-icon>
+                    <v-icon :size="isMobile ? 18 : 20">mdi-delete-outline</v-icon>
                   </v-btn>
-                  <v-icon class="ml-1">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                  <v-icon :size="isMobile ? 20 : 24">{{ expanded ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
                 </div>
               </template>
             </v-expansion-panel-title>
@@ -440,9 +440,21 @@ function cancelDialogo() {
 </script>
 
 <style scoped>
-.text-truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.med-name {
+  word-break: break-word;
+  line-height: 1.3;
+}
+.med-subtitle {
+  word-break: break-word;
+  line-height: 1.3;
+}
+
+@media (min-width: 960px) {
+  .med-name,
+  .med-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>

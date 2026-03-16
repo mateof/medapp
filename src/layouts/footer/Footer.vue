@@ -1,6 +1,6 @@
 <template>
-  <v-footer app color="white" class="footerpart pa-0 px-4" height="36">
-    <div class="d-flex align-center justify-space-between w-100">
+  <v-footer app color="white" class="footerpart pa-0 px-4" :height="isMobile ? 'auto' : 36">
+    <div class="footer-content w-100" :class="isMobile ? 'footer-mobile' : 'footer-desktop'">
       <span class="text-caption text-medium-emphasis d-flex align-center" style="gap: 4px">
         &copy; {{ new Date().getFullYear() }} MedApp
         <span>·</span>
@@ -33,7 +33,12 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useDisplay } from 'vuetify'
 import { useRegisterSW } from 'virtual:pwa-register/vue'
+
+const { smAndDown } = useDisplay()
+const isMobile = computed(() => smAndDown.value)
 
 const appVersion = __APP_VERSION__
 
@@ -46,5 +51,17 @@ const { needRefresh, updateServiceWorker } = useRegisterSW()
 }
 .github-link:hover {
   color: rgba(0, 0, 0, 0.87) !important;
+}
+.footer-desktop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.footer-mobile {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 0;
 }
 </style>
