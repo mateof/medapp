@@ -6,7 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import { getSetting } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
-import { buildPrompt } from './prompt'
+import { buildPrompt, buildPosologiaPrompt } from './prompt'
 import { fetchProspectos, fetchProspectosPdf, calcMaxCharsPerProspecto } from './gemini'
 import * as geminiProvider from './gemini'
 import * as openaiProvider from './openai'
@@ -68,6 +68,38 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
   const result = await mod.generateJson(apiKey, prompt, model, provider)
 
   // Añadir metadata del proveedor/modelo al resultado
+  result._ai = {
+    provider: provider.id,
+    providerName: provider.name,
+    model: model,
+    timestamp: new Date().toISOString(),
+  }
+
+  return result
+}
+
+/**
+ * Consulta la posología recomendada para un medicamento según el perfil del paciente.
+ */
+export async function consultarPosologia(apiKey, medicamento) {
+  const { provider, model } = await getActiveConfig()
+  const mod = getModule(provider)
+  const store = useUiStore()
+
+  const perfil = await getUserProfile(store.activeUserId)
+  if (!perfil) throw new Error('No se encontró el perfil del paciente')
+
+  const contextTokens = provider.defaultContextTokens || 128000
+  const maxChars = calcMaxCharsPerProspecto(1, contextTokens)
+
+  const prospectos = perfil.esMascota
+    ? await fetchProspectosPdf([{ data: medicamento }], maxChars)
+    : await fetchProspectos([{ data: medicamento }], maxChars)
+
+  const prompt = buildPosologiaPrompt(medicamento, prospectos, perfil)
+
+  const result = await mod.generateJson(apiKey, prompt, model, provider)
+
   result._ai = {
     provider: provider.id,
     providerName: provider.name,

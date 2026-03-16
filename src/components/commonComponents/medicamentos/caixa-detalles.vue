@@ -134,6 +134,84 @@
             </v-card-text>
           </v-card>
 
+          <!-- CONSULTAS POSOLOGÍA IA -->
+          <v-card v-if="posologiaConsultas.length > 0" class="mb-6">
+            <v-card-title>
+              <v-icon class="mr-2">mdi-robot-outline</v-icon>
+              Historial de consultas de posología IA
+            </v-card-title>
+            <v-divider />
+            <v-card-text>
+              <v-expansion-panels variant="accordion">
+                <v-expansion-panel
+                  v-for="(consulta, i) in posologiaConsultas"
+                  :key="i"
+                >
+                  <v-expansion-panel-title>
+                    <div class="d-flex align-center w-100">
+                      <span class="text-body-2 font-weight-medium flex-grow-1">{{ consulta.resumen }}</span>
+                      <span class="text-caption text-medium-emphasis ml-2">{{ formatDate(consulta.fecha) }}</span>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <div class="d-flex flex-column ga-3">
+                      <div v-if="consulta.parsed.dosis" class="d-flex align-start">
+                        <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-scale-balance</v-icon>
+                        <div>
+                          <div class="text-body-2 font-weight-medium">Dosis</div>
+                          <div class="text-body-2 text-medium-emphasis">{{ consulta.parsed.dosis }}</div>
+                        </div>
+                      </div>
+                      <div v-if="consulta.parsed.frecuencia" class="d-flex align-start">
+                        <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-timer-outline</v-icon>
+                        <div>
+                          <div class="text-body-2 font-weight-medium">Frecuencia</div>
+                          <div class="text-body-2 text-medium-emphasis">{{ consulta.parsed.frecuencia }}</div>
+                        </div>
+                      </div>
+                      <div v-if="consulta.parsed.duracion" class="d-flex align-start">
+                        <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-calendar-range</v-icon>
+                        <div>
+                          <div class="text-body-2 font-weight-medium">Duración</div>
+                          <div class="text-body-2 text-medium-emphasis">{{ consulta.parsed.duracion }}</div>
+                        </div>
+                      </div>
+                      <div v-if="consulta.parsed.via_administracion" class="d-flex align-start">
+                        <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-medical-bag</v-icon>
+                        <div>
+                          <div class="text-body-2 font-weight-medium">Vía</div>
+                          <div class="text-body-2 text-medium-emphasis">{{ consulta.parsed.via_administracion }}</div>
+                        </div>
+                      </div>
+                      <div v-if="consulta.parsed.notas" class="d-flex align-start">
+                        <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-note-text-outline</v-icon>
+                        <div>
+                          <div class="text-body-2 font-weight-medium">Notas</div>
+                          <div class="text-body-2 text-medium-emphasis">{{ consulta.parsed.notas }}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-if="consulta.parsed.advertencias?.length > 0" class="mt-2">
+                      <v-alert
+                        v-for="(adv, j) in consulta.parsed.advertencias"
+                        :key="j"
+                        type="warning"
+                        variant="tonal"
+                        density="compact"
+                        class="mb-1"
+                      >
+                        {{ adv }}
+                      </v-alert>
+                    </div>
+                    <p v-if="consulta.parsed._ai" class="text-caption text-medium-emphasis mt-2">
+                      {{ consulta.parsed._ai.providerName }} — {{ consulta.parsed._ai.model }}
+                    </p>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </v-card-text>
+          </v-card>
+
           <!-- PROBLEMA DE SUMINISTRO -->
           <v-card v-if="psum" class="mb-6">
             <v-expansion-panels>
@@ -272,7 +350,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion } from '@/services/storage/store'
+import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion, getPosologiaConsultas } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
@@ -291,6 +369,7 @@ const files = ref([])
 const hasApiKey = ref(false)
 const checkingInteracciones = ref(false)
 const interaccionResult = ref(null)
+const posologiaConsultas = ref([])
 
 const isMobile = computed(() => smAndDown.value)
 
@@ -398,6 +477,14 @@ onMounted(async () => {
       interaccionResult.value = null
     }
   }
+
+  // Cargar historial de consultas de posología IA
+  const consultas = await getPosologiaConsultas(medicamento.value?.name)
+  posologiaConsultas.value = consultas.map(c => {
+    let parsed = {}
+    try { parsed = JSON.parse(c.resultado) } catch { /* ignore */ }
+    return { ...c, parsed }
+  })
 })
 
 async function runInteractionCheck() {
@@ -428,6 +515,13 @@ async function runInteractionCheck() {
     }
   }
   checkingInteracciones.value = false
+}
+
+function formatDate(iso) {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('es-ES', {
+    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
 }
 
 function openUrl(url) {

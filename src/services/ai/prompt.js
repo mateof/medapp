@@ -1,7 +1,68 @@
 /**
- * Prompt compartido para análisis de interacciones farmacológicas.
- * Usado por todos los proveedores de IA.
+ * Prompts para los diferentes análisis farmacológicos con IA.
  */
+
+/**
+ * Prompt para consulta de posología recomendada de un medicamento.
+ */
+export function buildPosologiaPrompt(medicamento, prospectos, perfil) {
+  const nombre = medicamento.nombre || medicamento.name || 'Desconocido'
+  const pa = medicamento.vtm?.nombre || medicamento.pactivos || ''
+  const forma = typeof medicamento.formaFarmaceutica === 'object'
+    ? medicamento.formaFarmaceutica?.nombre
+    : medicamento.formaFarmaceutica || ''
+
+  const perfilParts = []
+  if (perfil.esMascota) {
+    perfilParts.push(`TIPO DE PACIENTE: Mascota (${perfil.tipoMascota || 'no especificado'})`)
+  }
+  if (perfil.edad) perfilParts.push(`EDAD: ${perfil.edad} años`)
+  if (perfil.peso) perfilParts.push(`PESO: ${perfil.peso} kg`)
+  if (perfil.altura) perfilParts.push(`ALTURA: ${perfil.altura} cm`)
+  if (perfil.genero) perfilParts.push(`GÉNERO: ${perfil.genero}`)
+  if (perfil.enfermedades_cronicas?.length > 0) {
+    perfilParts.push(`ENFERMEDADES CRÓNICAS: ${perfil.enfermedades_cronicas.join(', ')}`)
+  }
+  if (perfil.alergias?.length > 0) {
+    perfilParts.push(`ALERGIAS: ${perfil.alergias.join(', ')}`)
+  }
+  if (perfil.peculiaridades?.length > 0) {
+    perfilParts.push(`PECULIARIDADES: ${perfil.peculiaridades.join(', ')}`)
+  }
+
+  let prospectosSection = ''
+  if (prospectos.length > 0) {
+    prospectosSection = '\nPROSPECTO DEL MEDICAMENTO:\n' + prospectos.map(p =>
+      `--- ${p.nombre} ---\n${p.texto}\n`
+    ).join('\n')
+  }
+
+  const contexto = perfil.esMascota
+    ? 'Eres un asistente veterinario experto en farmacología animal. Recomienda la posología adecuada del siguiente medicamento veterinario para el paciente.'
+    : 'Eres un asistente farmacéutico experto. Recomienda la posología adecuada del siguiente medicamento para el paciente.'
+
+  return `${contexto}
+
+MEDICAMENTO: ${nombre}${pa ? ` (Principio activo: ${pa})` : ''}${forma ? ` — Forma: ${forma}` : ''}
+
+PERFIL DEL PACIENTE:
+${perfilParts.join('\n')}
+${prospectosSection}
+Basándote en la ficha técnica del medicamento, el prospecto disponible y el perfil del paciente, recomienda la posología más adecuada.
+
+Responde EXCLUSIVAMENTE en formato JSON con esta estructura:
+{
+  "dosis": "dosis recomendada (ej: 500 mg, 1 comprimido, 5 ml)",
+  "frecuencia": "frecuencia recomendada (ej: Cada 8 horas)",
+  "duracion": "duración recomendada o null si depende del caso",
+  "via_administracion": "oral, tópica, etc.",
+  "notas": "instrucciones adicionales (con/sin comida, momento del día, etc.)",
+  "advertencias": ["lista de advertencias relevantes para este paciente"],
+  "resumen": "frase corta de 1-2 líneas con la recomendación principal"
+}
+
+Sé preciso y basa tu recomendación en evidencia farmacológica. Si el medicamento no es adecuado para el perfil del paciente, indícalo claramente en las advertencias.`
+}
 
 export function buildPrompt(medicamentos, enfermedades, prospectos, perfil = null) {
   const medList = medicamentos.map((m, i) => {

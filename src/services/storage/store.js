@@ -175,11 +175,14 @@ export async function saveInteraccion(data) {
     });
 }
 
-export async function getInteracciones() {
+export async function getInteracciones({ incluirPosologia = false } = {}) {
     const userId = getUserId();
-    const all = await db.interacciones
+    let all = await db.interacciones
         .where('userId').equals(userId)
         .toArray();
+    if (!incluirPosologia) {
+        all = all.filter(i => i.tipo !== 'posologia');
+    }
     return all.sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
@@ -199,6 +202,30 @@ export async function getInteraccionByMedId(medId, medName) {
         }
         return false;
     }) || null;
+}
+
+export async function savePosologiaConsulta(data) {
+    const userId = getUserId();
+    const plain = JSON.parse(JSON.stringify(data));
+    await db.interacciones.add({
+        ...plain,
+        tipo: 'posologia',
+        fecha: new Date().toISOString(),
+        userId
+    });
+}
+
+export async function getPosologiaConsultas(medName) {
+    const userId = getUserId();
+    const all = await db.interacciones
+        .where('userId').equals(userId)
+        .filter(i => i.tipo === 'posologia')
+        .toArray();
+    if (!medName) return all.sort((a, b) => b.fecha.localeCompare(a.fecha));
+    const nameLower = medName.toLowerCase();
+    return all
+        .filter(i => i.medName && i.medName.toLowerCase().includes(nameLower))
+        .sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
 export async function getLatestInteraccion() {
@@ -223,7 +250,9 @@ export async function deleteSharedSetting(key) {
 
 export async function deleteInteraccionesByMedId(medId, medName) {
     const userId = getUserId();
-    const all = await db.interacciones.where('userId').equals(userId).toArray();
+    const all = await db.interacciones.where('userId').equals(userId)
+        .filter(i => i.tipo !== 'posologia')
+        .toArray();
     const nameLower = (medName || '').toLowerCase();
     const firstWord = nameLower.split(/[\s(,]/)[0];
     const idsToDelete = all

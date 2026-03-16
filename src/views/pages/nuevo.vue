@@ -168,6 +168,17 @@
                 />
               </v-col>
             </v-row>
+            <v-btn
+              v-if="model && canConsultPosologia"
+              variant="tonal"
+              color="secondary"
+              prepend-icon="mdi-robot-outline"
+              :loading="consultingPosologia"
+              class="mt-2"
+              @click="doPosologiaConsulta"
+            >
+              Consultar posología con IA
+            </v-btn>
           </v-card-text>
           <v-divider />
           <v-card-actions class="pa-4">
@@ -223,6 +234,103 @@
       </v-card>
     </v-dialog>
 
+    <!-- Diálogo de consulta de posología IA -->
+    <v-dialog v-model="showPosologiaDialog" max-width="600">
+      <v-card>
+        <v-card-title class="text-h6">
+          <v-icon class="mr-2">mdi-robot-outline</v-icon>
+          Posología recomendada por IA
+        </v-card-title>
+        <v-divider />
+        <v-card-text>
+          <div v-if="consultingPosologia" class="text-center py-8">
+            <v-progress-circular indeterminate color="primary" size="48" class="mb-4" />
+            <p class="text-body-1">Consultando posología recomendada...</p>
+          </div>
+          <div v-else-if="posologiaConsultaError" class="text-center py-4">
+            <v-alert type="error" variant="tonal">
+              {{ posologiaConsultaError }}
+            </v-alert>
+          </div>
+          <div v-else-if="posologiaConsultaResult">
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              {{ posologiaConsultaResult.resumen }}
+            </v-alert>
+
+            <div class="d-flex flex-column ga-3 mb-2">
+              <div v-if="posologiaConsultaResult.dosis" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-scale-balance</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Dosis</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ posologiaConsultaResult.dosis }}</div>
+                </div>
+              </div>
+              <div v-if="posologiaConsultaResult.frecuencia" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-timer-outline</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Frecuencia</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ posologiaConsultaResult.frecuencia }}</div>
+                </div>
+              </div>
+              <div v-if="posologiaConsultaResult.duracion" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-calendar-range</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Duración</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ posologiaConsultaResult.duracion }}</div>
+                </div>
+              </div>
+              <div v-if="posologiaConsultaResult.via_administracion" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-medical-bag</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Vía de administración</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ posologiaConsultaResult.via_administracion }}</div>
+                </div>
+              </div>
+              <div v-if="posologiaConsultaResult.notas" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-note-text-outline</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Notas</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ posologiaConsultaResult.notas }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="posologiaConsultaResult.advertencias?.length > 0">
+              <p class="text-subtitle-2 font-weight-medium mb-1">Advertencias</p>
+              <v-alert
+                v-for="(adv, i) in posologiaConsultaResult.advertencias"
+                :key="i"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-1"
+              >
+                {{ adv }}
+              </v-alert>
+            </div>
+
+            <p v-if="posologiaConsultaResult._ai" class="text-caption text-medium-emphasis mt-3">
+              {{ posologiaConsultaResult._ai.providerName }} — {{ posologiaConsultaResult._ai.model }}
+            </p>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="justify-space-between">
+          <v-btn
+            v-if="posologiaConsultaResult && !consultingPosologia"
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-content-copy"
+            @click="applyPosologia"
+          >
+            Aplicar al formulario
+          </v-btn>
+          <v-spacer />
+          <v-btn variant="text" @click="showPosologiaDialog = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-snackbar v-model="duplicateError" color="error" :timeout="3000" location="top">
       El medicamento ya existe en tu lista
     </v-snackbar>
@@ -235,10 +343,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { searchDrugs } from '@/services/http/http'
-import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion } from '@/services/storage/store'
+import { addMedicamento, existsInDatabase, getDistinctEtiquetas, getMedicamentos, saveInteraccion, savePosologiaConsulta } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { useUiStore } from '@/stores/ui'
-import { checkInteracciones } from '@/services/ai/ai'
+import { checkInteracciones, consultarPosologia } from '@/services/ai/ai'
 import interacciones from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const router = useRouter()
@@ -268,6 +376,19 @@ const duracionesSugeridas = [
   '3 días', '5 días', '7 días', '10 días', '14 días',
   '1 mes', '3 meses', 'Crónico', 'Según prescripción',
 ]
+
+// Consulta posología IA
+const showPosologiaDialog = ref(false)
+const consultingPosologia = ref(false)
+const posologiaConsultaResult = ref(null)
+const posologiaConsultaError = ref(null)
+const userPerfil = ref(null)
+
+const canConsultPosologia = computed(() => {
+  if (!uiStore.apiKey) return false
+  if (!userPerfil.value) return false
+  return !!(userPerfil.value.edad || userPerfil.value.peso)
+})
 
 // Interacciones
 const showInteraccionDialog = ref(false)
@@ -378,6 +499,7 @@ const addButtonText = computed(() => {
 onMounted(async () => {
   uiStore.setAddButton(false)
   itemsLabel.value = await getDistinctEtiquetas()
+  userPerfil.value = await getUserProfile(uiStore.activeUserId)
 })
 
 onUnmounted(() => {
@@ -497,5 +619,39 @@ async function doAdd() {
     pendingInteraccion.value = null
   }
   router.push('/medicamentos')
+}
+
+async function doPosologiaConsulta() {
+  showPosologiaDialog.value = true
+  consultingPosologia.value = true
+  posologiaConsultaResult.value = null
+  posologiaConsultaError.value = null
+
+  try {
+    const result = await consultarPosologia(uiStore.apiKey, model.value)
+    posologiaConsultaResult.value = result
+
+    // Guardar en historial
+    await savePosologiaConsulta({
+      medName: model.value.nombre,
+      nregistro: model.value.nregistro,
+      resultado: JSON.stringify(result),
+      resumen: result.resumen,
+    })
+  } catch (e) {
+    posologiaConsultaError.value = e.message || 'Error al consultar posología'
+  }
+  consultingPosologia.value = false
+}
+
+function applyPosologia() {
+  const r = posologiaConsultaResult.value
+  if (!r) return
+  if (r.dosis) posologiaDosis.value = r.dosis
+  if (r.frecuencia) posologiaFrecuencia.value = r.frecuencia
+  if (r.duracion) posologiaDuracion.value = r.duracion
+  const notas = [r.notas, r.via_administracion ? `Vía: ${r.via_administracion}` : ''].filter(Boolean).join('. ')
+  if (notas) posologiaNotas.value = notas
+  showPosologiaDialog.value = false
 }
 </script>

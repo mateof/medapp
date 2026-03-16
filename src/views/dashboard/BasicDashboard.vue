@@ -289,6 +289,16 @@
                   <v-list-item rounded="lg" @click="openCheckDetail(check)">
                     <template #prepend>
                       <v-chip
+                        v-if="check.tipo === 'posologia'"
+                        color="secondary"
+                        size="x-small"
+                        variant="flat"
+                        class="mr-3"
+                      >
+                        Posología
+                      </v-chip>
+                      <v-chip
+                        v-else
                         :color="severidadColor(check.severidad)"
                         size="x-small"
                         variant="flat"
@@ -301,7 +311,9 @@
                       {{ check.resumen }}
                     </v-list-item-title>
                     <v-list-item-subtitle>
-                      {{ formatFecha(check.fecha) }} · {{ (check.medNames || []).length }} medicamentos
+                      {{ formatFecha(check.fecha) }}
+                      <template v-if="check.tipo === 'posologia'"> · {{ check.medName }}</template>
+                      <template v-else> · {{ (check.medNames || []).length }} medicamentos</template>
                       <template v-if="getCheckAi(check)"> · {{ getCheckAi(check) }}</template>
                     </v-list-item-subtitle>
                     <template #append>
@@ -360,22 +372,89 @@
     <v-dialog v-model="showCheckDetail" max-width="1200" width="90%">
       <v-card v-if="checkDetailData">
         <v-card-text>
-          <div class="d-flex align-center flex-wrap ga-2 mb-3">
-            <v-chip :color="severidadColor(checkDetailData.severidad)" size="small">
-              {{ checkDetailData.severidad }}
-            </v-chip>
-            <span class="text-caption text-medium-emphasis">{{ formatFecha(checkDetailCheck?.fecha) }}</span>
-          </div>
-          <div class="d-flex flex-wrap ga-1 mb-3">
-            <v-chip
-              v-for="name in (checkDetailCheck?.medNames || [])"
-              :key="name"
-              size="x-small"
-              color="primary"
-              variant="tonal"
-            >{{ name }}</v-chip>
-          </div>
-          <interacciones-view :resultado="checkDetailData" />
+          <!-- Posología IA -->
+          <template v-if="checkDetailCheck?.tipo === 'posologia'">
+            <div class="d-flex align-center flex-wrap ga-2 mb-3">
+              <v-chip color="secondary" size="small">Posología IA</v-chip>
+              <v-chip size="x-small" color="primary" variant="tonal">{{ checkDetailCheck.medName }}</v-chip>
+              <span class="text-caption text-medium-emphasis">{{ formatFecha(checkDetailCheck?.fecha) }}</span>
+            </div>
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              {{ checkDetailData.resumen }}
+            </v-alert>
+            <div class="d-flex flex-column ga-3 mb-2">
+              <div v-if="checkDetailData.dosis" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-scale-balance</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Dosis</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ checkDetailData.dosis }}</div>
+                </div>
+              </div>
+              <div v-if="checkDetailData.frecuencia" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-timer-outline</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Frecuencia</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ checkDetailData.frecuencia }}</div>
+                </div>
+              </div>
+              <div v-if="checkDetailData.duracion" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-calendar-range</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Duración</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ checkDetailData.duracion }}</div>
+                </div>
+              </div>
+              <div v-if="checkDetailData.via_administracion" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-medical-bag</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Vía de administración</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ checkDetailData.via_administracion }}</div>
+                </div>
+              </div>
+              <div v-if="checkDetailData.notas" class="d-flex align-start">
+                <v-icon size="small" class="mr-3 mt-1" color="primary">mdi-note-text-outline</v-icon>
+                <div>
+                  <div class="text-body-2 font-weight-medium">Notas</div>
+                  <div class="text-body-2 text-medium-emphasis">{{ checkDetailData.notas }}</div>
+                </div>
+              </div>
+            </div>
+            <div v-if="checkDetailData.advertencias?.length > 0" class="mt-2">
+              <v-alert
+                v-for="(adv, j) in checkDetailData.advertencias"
+                :key="j"
+                type="warning"
+                variant="tonal"
+                density="compact"
+                class="mb-1"
+              >
+                {{ adv }}
+              </v-alert>
+            </div>
+            <p v-if="checkDetailData._ai" class="text-caption text-medium-emphasis mt-3">
+              {{ checkDetailData._ai.providerName }} — {{ checkDetailData._ai.model }}
+            </p>
+          </template>
+
+          <!-- Interacciones -->
+          <template v-else>
+            <div class="d-flex align-center flex-wrap ga-2 mb-3">
+              <v-chip :color="severidadColor(checkDetailData.severidad)" size="small">
+                {{ checkDetailData.severidad }}
+              </v-chip>
+              <span class="text-caption text-medium-emphasis">{{ formatFecha(checkDetailCheck?.fecha) }}</span>
+            </div>
+            <div class="d-flex flex-wrap ga-1 mb-3">
+              <v-chip
+                v-for="name in (checkDetailCheck?.medNames || [])"
+                :key="name"
+                size="x-small"
+                color="primary"
+                variant="tonal"
+              >{{ name }}</v-chip>
+            </div>
+            <interacciones-view :resultado="checkDetailData" />
+          </template>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" @click="showCheckDetail = false">Cerrar</v-btn>
@@ -450,7 +529,11 @@ const checkDetailCheck = ref(null)
 
 function openCheckDetail(check) {
   try {
-    checkDetailData.value = JSON.parse(check.detalle)
+    if (check.tipo === 'posologia') {
+      checkDetailData.value = JSON.parse(check.resultado)
+    } else {
+      checkDetailData.value = JSON.parse(check.detalle)
+    }
     checkDetailCheck.value = check
     showCheckDetail.value = true
   } catch {
@@ -469,7 +552,7 @@ onMounted(async () => {
     getActividadReciente(15),
     getActividadPorMes(6),
     getMedicamentos(),
-    getInteracciones(),
+    getInteracciones({ incluirPosologia: true }),
   ])
   totalMeds.value = count
   totalTags.value = tags.length
@@ -637,7 +720,8 @@ function getEventColor(tipo) {
 
 function getCheckAi(check) {
   try {
-    const data = JSON.parse(check.detalle)
+    const raw = check.tipo === 'posologia' ? check.resultado : check.detalle
+    const data = JSON.parse(raw)
     if (data._ai) return `${data._ai.providerName || data._ai.provider} · ${data._ai.model}`
   } catch { /* ignore */ }
   return null
