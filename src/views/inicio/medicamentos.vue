@@ -15,6 +15,18 @@
           </v-btn>
         </v-card>
 
+        <div v-if="medicamentos.length > 0" class="d-flex justify-end mb-3">
+          <v-btn
+            color="primary"
+            variant="tonal"
+            size="small"
+            prepend-icon="mdi-file-pdf-box"
+            @click="showInforme = true"
+          >
+            Informe PDF
+          </v-btn>
+        </div>
+
         <!-- Lista acordeón -->
         <v-expansion-panels v-if="medicamentos.length > 0" variant="accordion" v-model="expandedPanel">
           <v-expansion-panel
@@ -30,6 +42,16 @@
                 <div style="min-width: 0" class="flex-grow-1">
                   <div class="d-flex align-center flex-wrap" style="gap: 4px">
                     <span class="text-body-1 font-weight-medium med-name">{{ item.name }}</span>
+                    <v-chip
+                      v-if="item.activo === false"
+                      color="grey"
+                      size="x-small"
+                      variant="flat"
+                      class="flex-shrink-0"
+                      prepend-icon="mdi-pause"
+                    >
+                      Suspendido
+                    </v-chip>
                     <v-chip
                       v-if="getSeveridad(item.id)"
                       :color="getSeveridadColor(item.id)"
@@ -230,6 +252,11 @@
       :data="detail.data"
     />
 
+    <InformeDialog
+      v-model="showInforme"
+      :tipos="['medicacion', 'urgencias', 'interacciones']"
+    />
+
     <dialogo
       :showDialog="!!deletedId"
       :title="'Eliminar Medicamento'"
@@ -249,6 +276,7 @@ import { getMedicamentos, deleteMedicamentos, getInteracciones, deleteInteraccio
 import { useUiStore } from '@/stores/ui'
 import dialogo from '@/components/commonComponents/modals/dialog.vue'
 import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/InteraccionDetailDialog.vue'
+import InformeDialog from '@/components/commonComponents/informes/InformeDialog.vue'
 
 const router = useRouter()
 const { smAndDown } = useDisplay()
@@ -262,6 +290,7 @@ const deletedName = ref(null)
 const interaccionesMap = ref({})
 const interaccionesDataMap = ref({})
 const showDetail = ref(false)
+const showInforme = ref(false)
 const detail = ref({ type: '', data: null })
 
 const isMobile = computed(() => smAndDown.value)

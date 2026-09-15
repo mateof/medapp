@@ -3,7 +3,7 @@
  * Delega al proveedor activo (Gemini, OpenAI, Anthropic, etc.)
  */
 import { useUiStore } from '@/stores/ui'
-import { getSetting, getMedicamentos, saveInteraccion } from '@/services/storage/store'
+import { getSetting, getMedicamentosActivos, saveInteraccion } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt, buildPosologiaPrompt } from './prompt'
@@ -98,7 +98,11 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
  * @returns {Promise<{resultado: Object, medicamentos: Array, enfermedades: Array}>}
  */
 export async function analizarBotiquin(apiKey) {
-  const medicamentos = await getMedicamentos()
+  // Solo la medicación activa: analizar tratamientos suspendidos falsearía el resultado.
+  const medicamentos = await getMedicamentosActivos()
+  if (medicamentos.length === 0) {
+    throw new Error('No tienes ningún tratamiento activo que analizar.')
+  }
   const enfermedades = [...new Set(medicamentos.flatMap(m => m.enfermedades || []))]
 
   const resultado = await checkInteracciones(apiKey, medicamentos, enfermedades)

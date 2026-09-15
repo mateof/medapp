@@ -105,6 +105,79 @@
             </v-col>
           </v-row>
 
+          <!-- TRATAMIENTO -->
+          <v-card class="mb-6">
+            <v-card-title class="d-flex align-center flex-wrap ga-2">
+              <v-icon class="mr-2">mdi-calendar-clock</v-icon>
+              Tratamiento
+              <v-chip :color="tratamientoActivo ? 'success' : 'grey'" size="small" variant="flat">
+                {{ tratamientoActivo ? 'Activo' : 'Suspendido' }}
+              </v-chip>
+            </v-card-title>
+            <v-divider />
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                Los tratamientos suspendidos se conservan aquí, pero no se incluyen en el análisis
+                de interacciones ni en los informes de medicación actual.
+              </p>
+              <v-row dense align="center">
+                <v-col cols="12" sm="4">
+                  <v-switch
+                    v-model="tratamientoActivo"
+                    color="success"
+                    hide-details
+                    :label="tratamientoActivo ? 'En tratamiento' : 'Suspendido'"
+                  />
+                </v-col>
+                <v-col cols="12" sm="4">
+                  <v-text-field
+                    v-model="fechaInicio"
+                    type="date"
+                    label="Inicio del tratamiento"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    prepend-inner-icon="mdi-calendar-start"
+                  />
+                </v-col>
+                <v-col cols="12" sm="4">
+                  <v-text-field
+                    v-model="fechaFin"
+                    type="date"
+                    label="Fin del tratamiento"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    prepend-inner-icon="mdi-calendar-end"
+                  />
+                </v-col>
+              </v-row>
+              <div class="d-flex align-center ga-3 mt-4">
+                <v-btn
+                  color="primary"
+                  variant="tonal"
+                  prepend-icon="mdi-content-save"
+                  :loading="guardandoTratamiento"
+                  :disabled="!tratamientoCambiado"
+                  @click="guardarTratamiento"
+                >
+                  Guardar
+                </v-btn>
+                <span v-if="tratamientoGuardado" class="text-caption text-success">
+                  <v-icon size="small">mdi-check</v-icon> Guardado
+                </span>
+                <v-spacer />
+                <v-btn
+                  variant="outlined"
+                  prepend-icon="mdi-file-pdf-box"
+                  @click="showInforme = true"
+                >
+                  Ficha PDF
+                </v-btn>
+              </div>
+            </v-card-text>
+          </v-card>
+
           <!-- POSOLOGÍA PRESCRITA -->
           <v-card v-if="medicamento?.posologia" class="mb-6">
             <v-card-title>
@@ -343,6 +416,11 @@
       </v-row>
     </template>
 
+    <InformeDialog
+      v-model="showInforme"
+      :tipos="['ficha']"
+      :medicamento="medicamento"
+    />
   </v-container>
 </template>
 
@@ -350,13 +428,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getMedicamentoById, getInteraccionByMedId, getPosologiaConsultas } from '@/services/storage/store'
+import { getMedicamentoById, getInteraccionByMedId, getPosologiaConsultas, updateTratamiento } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
 import { analizarBotiquin } from '@/services/ai/ai'
 import { logError } from '@/services/logs/logger'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
+import InformeDialog from '@/components/commonComponents/informes/InformeDialog.vue'
 
 const route = useRoute()
 const { smAndDown } = useDisplay()
@@ -371,6 +450,21 @@ const hasApiKey = ref(false)
 const checkingInteracciones = ref(false)
 const interaccionResult = ref(null)
 const posologiaConsultas = ref([])
+
+// --- Estado del tratamiento ---
+const tratamientoActivo = ref(true)
+const fechaInicio = ref('')
+const fechaFin = ref('')
+const tratamientoOriginal = ref({ activo: true, fechaInicio: '', fechaFin: '' })
+const guardandoTratamiento = ref(false)
+const showInforme = ref(false)
+const tratamientoGuardado = ref(false)
+
+const tratamientoCambiado = computed(() =>
+  tratamientoActivo.value !== tratamientoOriginal.value.activo ||
+  fechaInicio.value !== tratamientoOriginal.value.fechaInicio ||
+  fechaFin.value !== tratamientoOriginal.value.fechaFin
+)
 
 const isMobile = computed(() => smAndDown.value)
 
@@ -475,6 +569,15 @@ onMounted(async () => {
 
   hasApiKey.value = !!uiStore.apiKey
 
+  tratamientoActivo.value = medicamento.value.activo !== false
+  fechaInicio.value = toDateInput(medicamento.value.fechaInicio)
+  fechaFin.value = toDateInput(medicamento.value.fechaFin)
+  tratamientoOriginal.value = {
+    activo: tratamientoActivo.value,
+    fechaInicio: fechaInicio.value,
+    fechaFin: fechaFin.value,
+  }
+
   const saved = await getInteraccionByMedId(medId, medicamento.value?.name)
   if (saved) {
     try {
@@ -492,6 +595,35 @@ onMounted(async () => {
     return { ...c, parsed }
   })
 })
+
+function toDateInput(iso) {
+  if (!iso) return ''
+  return String(iso).slice(0, 10)
+}
+
+async function guardarTratamiento() {
+  guardandoTratamiento.value = true
+  tratamientoGuardado.value = false
+  try {
+    await updateTratamiento(Number(route.params.id), {
+      activo: tratamientoActivo.value,
+      fechaInicio: fechaInicio.value || null,
+      fechaFin: fechaFin.value || null,
+    })
+    medicamento.value.activo = tratamientoActivo.value
+    medicamento.value.fechaInicio = fechaInicio.value || null
+    medicamento.value.fechaFin = fechaFin.value || null
+    tratamientoOriginal.value = {
+      activo: tratamientoActivo.value,
+      fechaInicio: fechaInicio.value,
+      fechaFin: fechaFin.value,
+    }
+    tratamientoGuardado.value = true
+  } catch (e) {
+    logError('ui', e, { operacion: 'guardar-tratamiento', medId: route.params.id })
+  }
+  guardandoTratamiento.value = false
+}
 
 async function runInteractionCheck() {
   checkingInteracciones.value = true

@@ -111,4 +111,21 @@ db.version(8).stores({
   logs: '++id, fecha, nivel, scope'
 });
 
+db.version(9).stores({
+  usuarios: '++id, nombre, createdAt, esMascota',
+  medicamentos: '++id, name, data, datos, nregistro, *enfermedades, *sintomas, dateins, dateupd, syncstate, syncdate, userId',
+  actividad: '++id, tipo, fecha, medId, medName, userId',
+  settings: 'key',
+  interacciones: '++id, fecha, severidad, userId',
+  logs: '++id, fecha, nivel, scope'
+}).upgrade(trans => {
+  // Estado del tratamiento: hasta ahora la app solo sabía cuándo se dio de alta
+  // el medicamento, no si se sigue tomando ni desde cuándo.
+  return trans.table('medicamentos').toCollection().modify(med => {
+    if (med.activo === undefined) med.activo = true
+    if (med.fechaInicio === undefined) med.fechaInicio = null
+    if (med.fechaFin === undefined) med.fechaFin = null
+  })
+});
+
 db.open();

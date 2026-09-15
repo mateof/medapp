@@ -18,6 +18,17 @@
 
     <!-- Dashboard con datos -->
     <template v-if="!loading && totalMeds > 0">
+      <div class="d-flex justify-end mb-3">
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-file-pdf-box"
+          @click="showInforme = true"
+        >
+          Generar informe
+        </v-btn>
+      </div>
+
       <!-- Fila 1: KPIs -->
       <v-row>
         <v-col cols="12" sm="6" md="3">
@@ -533,6 +544,15 @@
           </template>
         </v-card-text>
         <v-card-actions class="justify-end">
+          <v-btn
+            v-if="checkDetailCheck?.tipo !== 'posologia'"
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-file-pdf-box"
+            @click="showInformeCheck = true"
+          >
+            Informe PDF
+          </v-btn>
           <v-btn variant="text" @click="showCheckDetail = false">Cerrar</v-btn>
         </v-card-actions>
       </v-card>
@@ -542,6 +562,17 @@
       v-model="showDetail"
       :type="detailItem.type"
       :data="detailItem.data"
+    />
+
+    <InformeDialog
+      v-model="showInforme"
+      :tipos="['medicacion', 'urgencias', 'interacciones']"
+    />
+
+    <InformeDialog
+      v-model="showInformeCheck"
+      :tipos="['interacciones']"
+      :analisis="checkDetailCheck"
     />
 
     <dialogo
@@ -584,6 +615,7 @@ import {
 import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/InteraccionDetailDialog.vue'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 import dialogo from '@/components/commonComponents/modals/dialog.vue'
+import InformeDialog from '@/components/commonComponents/informes/InformeDialog.vue'
 import { analizarBotiquin } from '@/services/ai/ai'
 import { logError } from '@/services/logs/logger'
 import { getProvider } from '@/services/ai/providers'
@@ -613,6 +645,8 @@ function openDetail(type, data) {
   showDetail.value = true
 }
 
+const showInforme = ref(false)
+const showInformeCheck = ref(false)
 const showCheckDetail = ref(false)
 const checkDetailData = ref(null)
 const checkDetailCheck = ref(null)

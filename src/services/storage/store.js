@@ -33,7 +33,7 @@ export async function getActividadReciente(limit = 20) {
 
 // --- Medicamentos CRUD ---
 
-export async function addMedicamento(m, etiquetas = [], posologia = null) {
+export async function addMedicamento(m, etiquetas = [], posologia = null, tratamiento = null) {
     const userId = getUserId();
     const plain = JSON.parse(JSON.stringify(m));
     const parsedTags = JSON.parse(JSON.stringify(etiquetas));
@@ -43,6 +43,9 @@ export async function addMedicamento(m, etiquetas = [], posologia = null) {
         nregistro: plain.nregistro,
         enfermedades: parsedTags,
         posologia: posologia ? JSON.parse(JSON.stringify(posologia)) : null,
+        activo: tratamiento?.activo ?? true,
+        fechaInicio: tratamiento?.fechaInicio || null,
+        fechaFin: tratamiento?.fechaFin || null,
         dateins: new Date().toISOString(),
         userId
     });
@@ -66,6 +69,42 @@ export async function addMedicamento(m, etiquetas = [], posologia = null) {
 export async function getMedicamentos() {
     const userId = getUserId();
     return await db.medicamentos.where('userId').equals(userId).toArray();
+}
+
+/**
+ * Medicamentos en tratamiento activo. Los suspendidos se conservan en la app
+ * (y en el historial) pero no cuentan como medicación actual.
+ * `activo` no se indexa: IndexedDB no admite booleanos como clave.
+ */
+export async function getMedicamentosActivos() {
+    const all = await getMedicamentos();
+    return all.filter(m => m.activo !== false);
+}
+
+/**
+ * Actualiza el estado del tratamiento de un medicamento.
+ */
+export async function updateTratamiento(id, { activo, fechaInicio, fechaFin }) {
+    const med = await db.medicamentos.get(id);
+    if (!med) return;
+
+    const cambios = { dateupd: new Date().toISOString() };
+    if (activo !== undefined) cambios.activo = activo;
+    if (fechaInicio !== undefined) cambios.fechaInicio = fechaInicio || null;
+    if (fechaFin !== undefined) cambios.fechaFin = fechaFin || null;
+
+    await db.medicamentos.update(id, cambios);
+
+    if (activo !== undefined && activo !== med.activo) {
+        await addActividad({
+            tipo: activo ? 'med_resumed' : 'med_suspended',
+            medId: id,
+            medName: med.name,
+            detalle: activo
+                ? `Tratamiento reanudado: ${med.name}`
+                : `Tratamiento suspendido: ${med.name}`
+        });
+    }
 }
 
 export async function getMedicamentoById(id) {
