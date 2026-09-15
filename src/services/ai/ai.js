@@ -3,7 +3,7 @@
  * Delega al proveedor activo (Gemini, OpenAI, Anthropic, etc.)
  */
 import { useUiStore } from '@/stores/ui'
-import { getSetting } from '@/services/storage/store'
+import { getSetting, getMedicamentos, saveInteraccion } from '@/services/storage/store'
 import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt, buildPosologiaPrompt } from './prompt'
@@ -76,6 +76,30 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
   }
 
   return result
+}
+
+/**
+ * Analiza el botiquín completo del usuario y guarda el resultado en el historial.
+ * Cada llamada crea un registro nuevo, de modo que se conserva la opinión previa
+ * de la IA para poder compararla con la actual.
+ * @returns {Promise<{resultado: Object, medicamentos: Array, enfermedades: Array}>}
+ */
+export async function analizarBotiquin(apiKey) {
+  const medicamentos = await getMedicamentos()
+  const enfermedades = [...new Set(medicamentos.flatMap(m => m.enfermedades || []))]
+
+  const resultado = await checkInteracciones(apiKey, medicamentos, enfermedades)
+
+  await saveInteraccion({
+    medIds: medicamentos.map(m => m.id),
+    medNames: medicamentos.map(m => m.name),
+    severidad: resultado.severidad,
+    resumen: resultado.resumen,
+    detalle: JSON.stringify(resultado),
+    enfermedades,
+  })
+
+  return { resultado, medicamentos, enfermedades }
 }
 
 /**

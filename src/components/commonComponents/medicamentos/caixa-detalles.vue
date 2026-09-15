@@ -350,11 +350,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getMedicamentoById, getMedicamentos, getInteraccionByMedId, saveInteraccion, getPosologiaConsultas } from '@/services/storage/store'
+import { getMedicamentoById, getInteraccionByMedId, getPosologiaConsultas } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
-import { checkInteracciones } from '@/services/ai/ai'
+import { analizarBotiquin } from '@/services/ai/ai'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const route = useRoute()
@@ -496,21 +496,8 @@ async function runInteractionCheck() {
   checkingInteracciones.value = true
   interaccionResult.value = null
   try {
-    const apiKey = uiStore.apiKey
-    const allMeds = await getMedicamentos()
-    const allEnfermedades = [...new Set(allMeds.flatMap(m => m.enfermedades || []))]
-
-    const result = await checkInteracciones(apiKey, allMeds, allEnfermedades)
-    interaccionResult.value = result
-
-    await saveInteraccion({
-      medIds: allMeds.map(m => m.id),
-      medNames: allMeds.map(m => m.name),
-      severidad: result.severidad,
-      resumen: result.resumen,
-      detalle: JSON.stringify(result),
-      enfermedades: allEnfermedades
-    })
+    const { resultado } = await analizarBotiquin(uiStore.apiKey)
+    interaccionResult.value = resultado
   } catch (e) {
     interaccionResult.value = {
       severidad: 'ninguna',

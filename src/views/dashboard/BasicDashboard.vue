@@ -103,18 +103,53 @@
         <v-col cols="12">
           <v-card>
             <v-card-text class="pa-5">
-              <h3 class="text-h6 font-weight-regular mb-4">
-                <v-icon class="mr-1">mdi-pill-multiple</v-icon>
-                Último análisis de interacciones
-              </h3>
+              <div class="d-flex align-center flex-wrap ga-2 mb-4">
+                <h3 class="text-h6 font-weight-regular">
+                  <v-icon class="mr-1">mdi-pill-multiple</v-icon>
+                  Último análisis de interacciones
+                </h3>
+                <v-spacer />
+                <v-btn
+                  v-if="hasApiKey"
+                  size="small"
+                  variant="tonal"
+                  :color="motivosDesactualizado.length > 0 ? 'warning' : 'primary'"
+                  :loading="analizando"
+                  prepend-icon="mdi-refresh"
+                  @click="pedirAnalisis"
+                >
+                  {{ latestInteraccion ? 'Analizar de nuevo' : 'Analizar ahora' }}
+                </v-btn>
+              </div>
+
+              <v-alert v-if="analisisError" type="error" variant="tonal" density="compact" class="mb-4">
+                {{ analisisError }}
+              </v-alert>
 
               <!-- Sin checks -->
               <v-alert v-if="!latestInteraccion" type="info" variant="tonal" density="compact">
-                No se han comprobado interacciones todavía. Usa el botón "Comprobar" en los detalles de un medicamento.
+                No se han comprobado interacciones todavía.
+                <template v-if="hasApiKey">Pulsa "Analizar ahora" para revisar todo tu botiquín.</template>
+                <template v-else>Configura tu API key en Ajustes para poder analizarlas.</template>
               </v-alert>
 
               <!-- Con check -->
               <template v-else>
+                <!-- Aviso de análisis desactualizado -->
+                <v-alert
+                  v-if="motivosDesactualizado.length > 0"
+                  type="warning"
+                  variant="tonal"
+                  density="compact"
+                  icon="mdi-history"
+                  class="mb-4"
+                >
+                  <div class="text-body-2 font-weight-medium mb-1">Este análisis puede estar desactualizado</div>
+                  <ul class="text-caption pl-4">
+                    <li v-for="(motivo, i) in motivosDesactualizado" :key="'mot-' + i">{{ motivo }}</li>
+                  </ul>
+                </v-alert>
+
                 <v-alert
                   :type="severidadAlertType(latestInteraccion.severidad)"
                   variant="tonal"
@@ -314,8 +349,8 @@
           <v-card>
             <v-card-text class="pa-5">
               <h3 class="text-h6 font-weight-regular mb-4">Historial de comprobaciones</h3>
-              <v-list v-if="interaccionesHistory.length > 0" lines="two" density="compact">
-                <template v-for="(check, i) in interaccionesHistory.slice(0, 5)" :key="check.id || i">
+              <v-list v-if="interaccionesHistory.length > 0" lines="two" density="compact" class="history-list">
+                <template v-for="(check, i) in visibleHistory" :key="check.id || i">
                   <v-divider v-if="i !== 0" />
                   <v-list-item rounded="lg" @click="openCheckDetail(check)">
                     <template #prepend>
@@ -355,6 +390,16 @@
               </v-list>
               <div v-else class="text-center py-4 text-medium-emphasis">
                 No hay comprobaciones todavía
+              </div>
+              <div v-if="interaccionesHistory.length > HISTORY_PAGE_SIZE" class="text-center mt-2">
+                <v-btn
+                  variant="text"
+                  size="small"
+                  :prepend-icon="showAllHistory ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+                  @click="showAllHistory = !showAllHistory"
+                >
+                  {{ showAllHistory ? 'Ver menos' : `Ver las ${interaccionesHistory.length} comprobaciones` }}
+                </v-btn>
               </div>
             </v-card-text>
           </v-card>
@@ -498,6 +543,15 @@
       :type="detailItem.type"
       :data="detailItem.data"
     />
+
+    <dialogo
+      :showDialog="confirmAnalisis"
+      :title="'Analizar de nuevo'"
+      :type="'confirm'"
+      :texto="textoConfirmacion"
+      @cancel="confirmAnalisis = false"
+      @accept="ejecutarAnalisis()"
+    />
   </v-container>
 </template>
 
@@ -516,7 +570,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js'
-import { formatDistanceToNow, parseISO, format } from 'date-fns'
+import { formatDistanceToNow, parseISO, format, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   getMedicamentoCount,
@@ -529,6 +583,10 @@ import {
 } from '@/services/storage/store'
 import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/InteraccionDetailDialog.vue'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
+import dialogo from '@/components/commonComponents/modals/dialog.vue'
+import { analizarBotiquin } from '@/services/ai/ai'
+import { getProvider } from '@/services/ai/providers'
+import { useUiStore } from '@/stores/ui'
 
 ChartJS.register(
   CategoryScale, LinearScale,
@@ -574,8 +632,31 @@ function openCheckDetail(check) {
 const interaccionesHistory = ref([])
 const latestInteraccion = ref(null)
 const latestDetalle = ref(null)
+const allMeds = ref([])
+const showAllHistory = ref(false)
+const HISTORY_PAGE_SIZE = 5
 
-onMounted(async () => {
+const visibleHistory = computed(() =>
+  showAllHistory.value ? interaccionesHistory.value : interaccionesHistory.value.slice(0, HISTORY_PAGE_SIZE)
+)
+
+// --- Reanálisis bajo demanda ---
+const uiStore = useUiStore()
+const analizando = ref(false)
+const analisisError = ref(null)
+const confirmAnalisis = ref(false)
+
+// A partir de este número de medicamentos el análisis es caro (descarga todos
+// los prospectos y los envía al modelo), así que pedimos confirmación.
+const MEDS_CONFIRM_THRESHOLD = 4
+// Días tras los cuales consideramos que conviene repetir el análisis.
+const ANALISIS_DIAS_VALIDEZ = 90
+
+const hasApiKey = computed(() => !!uiStore.apiKey)
+
+onMounted(loadData)
+
+async function loadData() {
   const [count, tags, perTag, activity, monthly, meds, interacciones] = await Promise.all([
     getMedicamentoCount(),
     getDistinctEtiquetas(),
@@ -587,6 +668,7 @@ onMounted(async () => {
   ])
   totalMeds.value = count
   totalTags.value = tags.length
+  allMeds.value = meds
   medsPerTag.value = perTag
   actividades.value = activity
   actividadMensual.value = monthly
@@ -600,17 +682,92 @@ onMounted(async () => {
     .slice(0, 5)
 
   interaccionesHistory.value = interacciones
-  if (interacciones.length > 0) {
-    latestInteraccion.value = interacciones[0]
+  latestInteraccion.value = null
+  latestDetalle.value = null
+  const ultimo = interacciones.find(i => i.tipo !== 'posologia')
+  if (ultimo) {
+    latestInteraccion.value = ultimo
     try {
-      latestDetalle.value = JSON.parse(interacciones[0].detalle)
+      latestDetalle.value = JSON.parse(ultimo.detalle)
     } catch {
       latestDetalle.value = null
     }
   }
 
   loading.value = false
+}
+
+// --- Reanálisis de interacciones ---
+
+/**
+ * Motivos por los que el último análisis puede haberse quedado obsoleto:
+ * el botiquín ha cambiado, se usa otra IA o ha pasado demasiado tiempo.
+ */
+const motivosDesactualizado = computed(() => {
+  if (!latestInteraccion.value) return []
+  const motivos = []
+
+  const analizados = new Set(latestInteraccion.value.medIds || [])
+  const actuales = allMeds.value.map(m => m.id)
+  const nuevos = actuales.filter(id => !analizados.has(id))
+  const eliminados = [...analizados].filter(id => !actuales.includes(id))
+  if (nuevos.length > 0) {
+    motivos.push(nuevos.length === 1
+      ? 'Has añadido un medicamento desde entonces.'
+      : `Has añadido ${nuevos.length} medicamentos desde entonces.`)
+  }
+  if (eliminados.length > 0) {
+    motivos.push('Ya no tomas alguno de los medicamentos analizados.')
+  }
+
+  const ai = latestDetalle.value?._ai
+  if (ai) {
+    if (ai.provider !== uiStore.aiProvider) {
+      const actual = getProvider(uiStore.aiProvider)
+      motivos.push(`Se analizó con ${ai.providerName || ai.provider} y ahora usas ${actual?.name || uiStore.aiProvider}.`)
+    } else if (ai.model !== uiStore.aiModel) {
+      motivos.push(`Se analizó con el modelo ${ai.model} y ahora usas ${uiStore.aiModel}.`)
+    }
+  }
+
+  const dias = differenceInDays(new Date(), parseISO(latestInteraccion.value.fecha))
+  if (dias >= ANALISIS_DIAS_VALIDEZ) {
+    motivos.push(`Han pasado ${dias} días desde el análisis.`)
+  }
+
+  return motivos
 })
+
+const proveedorActualNombre = computed(() => {
+  return getProvider(uiStore.aiProvider)?.name || uiStore.aiProvider
+})
+
+const textoConfirmacion = computed(() =>
+  `Se van a analizar <b>${allMeds.value.length} medicamentos</b>. Se descargarán sus prospectos y se enviarán a ${proveedorActualNombre.value}, `
+  + 'así que la consulta puede tardar un poco y consume tokens de tu cuenta.<br><br>El resultado se guarda como un análisis nuevo: el anterior se conserva en el historial.'
+)
+
+function pedirAnalisis() {
+  analisisError.value = null
+  if (allMeds.value.length >= MEDS_CONFIRM_THRESHOLD) {
+    confirmAnalisis.value = true
+    return
+  }
+  ejecutarAnalisis()
+}
+
+async function ejecutarAnalisis() {
+  confirmAnalisis.value = false
+  analizando.value = true
+  analisisError.value = null
+  try {
+    await analizarBotiquin(uiStore.apiKey)
+    await loadData()
+  } catch (e) {
+    analisisError.value = e.message || 'No se pudo completar el análisis'
+  }
+  analizando.value = false
+}
 
 // --- Chart data ---
 
@@ -785,3 +942,10 @@ function getEventIcon(tipo) {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.history-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+</style>
