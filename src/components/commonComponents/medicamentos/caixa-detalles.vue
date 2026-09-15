@@ -445,9 +445,13 @@ const filteredInteraccionResult = computed(() => {
   const observacionesPosologia = (interaccionResult.value.observaciones_posologia || []).filter(op =>
     op.medicamento && matchMed(op.medicamento)
   )
+  const alternativas = (interaccionResult.value.alternativas || []).filter(alt =>
+    alt.medicamento_original && matchMed(alt.medicamento_original)
+  )
 
   if (interacciones.length === 0 && contraindicaciones.length === 0 &&
-      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0) return null
+      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0 &&
+      alternativas.length === 0) return null
 
   return {
     ...interaccionResult.value,
@@ -455,6 +459,7 @@ const filteredInteraccionResult = computed(() => {
     contraindicaciones_enfermedad: contraindicaciones,
     contraindicaciones_alergia: contraindicacionesAlergia,
     observaciones_posologia: observacionesPosologia,
+    alternativas,
   }
 })
 

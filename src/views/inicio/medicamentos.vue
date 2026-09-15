@@ -190,6 +190,27 @@
                     </v-list-item>
                   </v-list>
                 </div>
+
+                <div v-if="getFilteredData(item.id).alternativas?.length > 0" class="mt-2">
+                  <div class="text-subtitle-2 font-weight-bold mb-1">Alternativas sugeridas</div>
+                  <v-list density="compact" class="py-0">
+                    <v-list-item
+                      v-for="(alt, i) in getFilteredData(item.id).alternativas"
+                      :key="'alt-' + i"
+                      rounded="lg"
+                      @click="openDetail('alternativa', alt)"
+                    >
+                      <template #prepend>
+                        <v-icon :color="comparativaColor(alt.comparativa)" size="small">mdi-swap-horizontal</v-icon>
+                      </template>
+                      <v-list-item-title class="text-body-2 font-weight-medium text-wrap">{{ alt.medicamento_original }} → {{ alt.alternativa }}</v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ alt.beneficio }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </div>
               </template>
 
               <div v-else class="text-body-2 text-medium-emphasis py-2">
@@ -311,9 +332,13 @@ function filterInteraccionesForMed(resultado, med) {
   const observacionesPosologia = (resultado.observaciones_posologia || []).filter(op =>
     op.medicamento && matchName(op.medicamento)
   )
+  const alternativas = (resultado.alternativas || []).filter(alt =>
+    alt.medicamento_original && matchName(alt.medicamento_original)
+  )
 
   if (interacciones.length === 0 && contraindicaciones.length === 0 &&
-      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0) return null
+      contraindicacionesAlergia.length === 0 && observacionesPosologia.length === 0 &&
+      alternativas.length === 0) return null
 
   let maxSev = getMaxSeveridad(interacciones.map(i => i.severidad))
   if (maxSev === 'ninguna' && (contraindicaciones.length > 0 || contraindicacionesAlergia.length > 0)) {
@@ -329,7 +354,8 @@ function filterInteraccionesForMed(resultado, med) {
     interacciones,
     contraindicaciones,
     contraindicaciones_alergia: contraindicacionesAlergia,
-    observaciones_posologia: observacionesPosologia
+    observaciones_posologia: observacionesPosologia,
+    alternativas
   }
 }
 
@@ -386,6 +412,15 @@ function severidadChipColor(sev) {
     case 'moderada': return 'orange'
     case 'leve': return 'info'
     default: return 'success'
+  }
+}
+
+function comparativaColor(comp) {
+  switch (comp) {
+    case 'menos_nociva': return 'success'
+    case 'similar': return 'orange'
+    case 'distinto_perfil': return 'info'
+    default: return 'info'
   }
 }
 

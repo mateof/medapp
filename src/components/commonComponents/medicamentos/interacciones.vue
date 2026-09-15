@@ -94,6 +94,29 @@
       </v-list>
     </div>
 
+    <div v-if="resultado.alternativas?.length">
+      <h4 class="text-subtitle-1 font-weight-bold mb-2">Alternativas sugeridas</h4>
+      <v-list density="compact">
+        <v-list-item
+          v-for="(alt, i) in resultado.alternativas"
+          :key="'alt-' + i"
+          rounded="lg"
+          @click="openDetail('alternativa', alt)"
+        >
+          <template #prepend>
+            <v-chip :color="comparativaColor(alt.comparativa)" size="small" class="mr-2">
+              {{ comparativaLabel(alt.comparativa) }}
+            </v-chip>
+          </template>
+          <v-list-item-title class="text-wrap">{{ alt.medicamento_original }} → {{ alt.alternativa }}</v-list-item-title>
+          <v-list-item-subtitle class="text-truncate">{{ alt.beneficio }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+      </v-list>
+    </div>
+
     <div v-if="resultado._ai" class="d-flex align-center ga-2 mt-4 mb-2">
       <v-chip size="x-small" variant="tonal" color="primary" prepend-icon="mdi-robot-outline">
         {{ resultado._ai.providerName || resultado._ai.provider }}
@@ -187,6 +210,24 @@ function posologiaLabel(tipo) {
     case 'precaucion': return 'Precaución'
     case 'adecuada': return 'Adecuada'
     default: return tipo || 'Info'
+  }
+}
+
+function comparativaColor(comp) {
+  switch (comp) {
+    case 'menos_nociva': return 'success'
+    case 'similar': return 'orange'
+    case 'distinto_perfil': return 'info'
+    default: return 'info'
+  }
+}
+
+function comparativaLabel(comp) {
+  switch (comp) {
+    case 'menos_nociva': return 'Menos nociva'
+    case 'similar': return 'Riesgo similar'
+    case 'distinto_perfil': return 'Otros efectos'
+    default: return 'Alternativa'
   }
 }
 </script>

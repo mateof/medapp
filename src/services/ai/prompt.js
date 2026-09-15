@@ -136,6 +136,10 @@ export function buildPrompt(medicamentos, enfermedades, prospectos, perfil = nul
     ? '\nSi se indica posología, evalúa si la dosis y frecuencia son adecuadas según el perfil del paciente (edad, peso, género, enfermedades crónicas). Indica si alguna dosis parece excesiva, insuficiente o requiere precaución.'
     : ''
 
+  const instruccionAlternativas = perfil?.esMascota
+    ? '\nPara cada medicamento implicado en una interacción moderada o grave, o afectado por una contraindicación (por enfermedad o por alergia), propón una alternativa terapéutica veterinaria autorizada para la especie del paciente que evite ese problema concreto.'
+    : '\nPara cada medicamento implicado en una interacción moderada o grave, o afectado por una contraindicación (por enfermedad o por alergia), propón una alternativa terapéutica comercializada en España que evite ese problema concreto.'
+
   const schemaPosologia = hasPosologia ? `,
   "observaciones_posologia": [
     {
@@ -145,7 +149,7 @@ export function buildPrompt(medicamentos, enfermedades, prospectos, perfil = nul
     }
   ]` : ''
 
-  return `${contexto}${instruccionPosologia}
+  return `${contexto}${instruccionPosologia}${instruccionAlternativas}
 
 MEDICAMENTOS:
 ${medList}
@@ -179,8 +183,28 @@ Responde EXCLUSIVAMENTE en formato JSON con esta estructura:
       "alergia": "nombre de la alergia",
       "detalle": "por qué está contraindicado por la alergia"
     }
+  ],
+  "alternativas": [
+    {
+      "medicamento_original": "nombre del medicamento que convendría sustituir",
+      "motivo": "interaccion" | "enfermedad" | "alergia",
+      "problema": "efecto adverso o contraindicación que se quiere evitar",
+      "alternativa": "medicamento alternativo sugerido, o \\"Sin alternativa más segura\\" si no la hay",
+      "principio_activo": "principio activo de la alternativa o null",
+      "comparativa": "menos_nociva" | "similar" | "distinto_perfil",
+      "beneficio": "por qué esta alternativa evita el problema detectado",
+      "riesgos": ["otros efectos adversos, interacciones o contraindicaciones que sí puede tener la alternativa"]
+    }
   ]${schemaPosologia}
 }
+
+Reglas para "alternativas":
+- Solo propón alternativas para medicamentos con interacción moderada o grave, o con contraindicación por enfermedad o por alergia. Si no hay ninguno, devuelve el array vacío.
+- La alternativa no debe reproducir el problema detectado: distinto grupo terapéutico o distinto mecanismo cuando la interacción sea de clase, y nunca un principio activo con reactividad cruzada con la alergia del paciente.
+- Comprueba que la alternativa tampoco interacciona con el resto de medicamentos de la lista ni está contraindicada por las enfermedades del paciente; si aun así queda algún riesgo, decláralo en "riesgos".
+- "comparativa" indica el perfil de riesgo frente al medicamento original: "menos_nociva" si es claramente más segura, "similar" si el riesgo global es equivalente, "distinto_perfil" si cambia el tipo de efectos adversos sin ser globalmente mejor.
+- Rellena "riesgos" siempre que la alternativa tenga efectos adversos relevantes; usa un array vacío solo si no hay ninguno destacable.
+- No inventes medicamentos: si no existe una alternativa razonable, usa "Sin alternativa más segura" y explica en "beneficio" por qué debe valorarlo el profesional sanitario.
 
 Si no hay interacciones ni contraindicaciones, devuelve severidad "ninguna", resumen indicándolo, y arrays vacíos.${hasPosologia ? ' Si no hay observaciones sobre la posología, devuelve el array vacío.' : ''}
 Sé preciso y basa tu análisis en evidencia farmacológica.`

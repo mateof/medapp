@@ -13,7 +13,7 @@ export async function generateJson(apiKey, prompt, model, provider) {
 
     const response = await axios.post(`${baseUrl}/messages`, {
         model,
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [
             { role: 'user', content: prompt + '\n\nResponde SOLO con JSON válido, sin texto adicional.' }
         ],

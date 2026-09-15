@@ -201,6 +201,37 @@
                     </v-list-item>
                   </v-list>
                 </template>
+
+                <!-- Alternativas sugeridas -->
+                <template v-if="latestDetalle?.alternativas?.length > 0">
+                  <h4 class="text-subtitle-1 font-weight-medium mb-2 mt-4">Alternativas sugeridas</h4>
+                  <v-list density="compact">
+                    <v-list-item
+                      v-for="(alt, i) in latestDetalle.alternativas"
+                      :key="'alt-' + i"
+                      rounded="lg"
+                      @click="openDetail('alternativa', alt)"
+                    >
+                      <template #prepend>
+                        <v-chip
+                          :color="comparativaColor(alt.comparativa)"
+                          size="x-small"
+                          variant="flat"
+                          class="mr-3"
+                        >
+                          {{ comparativaLabel(alt.comparativa) }}
+                        </v-chip>
+                      </template>
+                      <v-list-item-title class="text-body-2 text-wrap">
+                        {{ alt.medicamento_original }} → {{ alt.alternativa }}
+                      </v-list-item-title>
+                      <v-list-item-subtitle class="text-truncate">{{ alt.beneficio }}</v-list-item-subtitle>
+                      <template #append>
+                        <v-icon size="small" color="medium-emphasis">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </template>
               </template>
             </v-card-text>
           </v-card>
@@ -696,6 +727,24 @@ function severidadAlertType(sev) {
 function severidadLabel(sev) {
   if (!sev) return 'Desconocida'
   return sev.charAt(0).toUpperCase() + sev.slice(1)
+}
+
+function comparativaColor(comp) {
+  switch (comp) {
+    case 'menos_nociva': return 'success'
+    case 'similar': return 'orange'
+    case 'distinto_perfil': return 'info'
+    default: return 'info'
+  }
+}
+
+function comparativaLabel(comp) {
+  switch (comp) {
+    case 'menos_nociva': return 'Menos nociva'
+    case 'similar': return 'Riesgo similar'
+    case 'distinto_perfil': return 'Otros efectos'
+    default: return 'Alternativa'
+  }
 }
 
 // --- General helpers ---
