@@ -179,31 +179,48 @@
           </v-card>
 
           <!-- POSOLOGÍA PRESCRITA -->
-          <v-card v-if="medicamento?.posologia" class="mb-6">
-            <v-card-title>
+          <v-card class="mb-6">
+            <v-card-title class="d-flex align-center flex-wrap ga-2">
               <v-icon class="mr-2">mdi-clock-outline</v-icon>
               Posología prescrita
+              <v-chip v-if="!tienePosologia" size="small" color="grey" variant="tonal">Sin indicar</v-chip>
             </v-card-title>
             <v-divider />
             <v-card-text>
-              <v-row dense>
-                <v-col v-if="medicamento.posologia.dosis" cols="12" sm="6" md="3">
-                  <div class="text-caption text-medium-emphasis">Dosis</div>
-                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.dosis }}</div>
-                </v-col>
-                <v-col v-if="medicamento.posologia.frecuencia" cols="12" sm="6" md="3">
-                  <div class="text-caption text-medium-emphasis">Frecuencia</div>
-                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.frecuencia }}</div>
-                </v-col>
-                <v-col v-if="medicamento.posologia.duracion" cols="12" sm="6" md="3">
-                  <div class="text-caption text-medium-emphasis">Duración</div>
-                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.duracion }}</div>
-                </v-col>
-                <v-col v-if="medicamento.posologia.notas" cols="12" sm="6" md="3">
-                  <div class="text-caption text-medium-emphasis">Notas</div>
-                  <div class="text-body-1 font-weight-medium">{{ medicamento.posologia.notas }}</div>
-                </v-col>
-              </v-row>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                La pauta que sigues realmente. Se usa en el análisis de interacciones y en los informes.
+              </p>
+
+              <PosologiaEditor
+                v-model="posologia"
+                :medicamento="medicamento?.data"
+                @consulta="recargarConsultas"
+              />
+
+              <div class="d-flex align-center ga-3 mt-4 flex-wrap">
+                <v-btn
+                  color="primary"
+                  variant="tonal"
+                  prepend-icon="mdi-content-save"
+                  :loading="guardandoPosologia"
+                  :disabled="!posologiaCambiada"
+                  @click="guardarPosologia"
+                >
+                  Guardar pauta
+                </v-btn>
+                <v-btn
+                  v-if="tienePosologia"
+                  variant="text"
+                  color="error"
+                  prepend-icon="mdi-delete-outline"
+                  @click="borrarPosologia"
+                >
+                  Borrar pauta
+                </v-btn>
+                <span v-if="posologiaGuardada" class="text-caption text-success">
+                  <v-icon size="small">mdi-check</v-icon> Guardada
+                </span>
+              </div>
             </v-card-text>
           </v-card>
 
@@ -428,7 +445,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import { getMedicamentoById, getInteraccionByMedId, getPosologiaConsultas, updateTratamiento } from '@/services/storage/store'
+import { getMedicamentoById, getInteraccionByMedId, getPosologiaConsultas, updateTratamiento, updatePosologia } from '@/services/storage/store'
 import { useUiStore } from '@/stores/ui'
 import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
@@ -436,6 +453,7 @@ import { analizarBotiquin } from '@/services/ai/ai'
 import { logError } from '@/services/logs/logger'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 import InformeDialog from '@/components/commonComponents/informes/InformeDialog.vue'
+import PosologiaEditor from '@/components/commonComponents/medicamentos/PosologiaEditor.vue'
 
 const route = useRoute()
 const { smAndDown } = useDisplay()
@@ -458,6 +476,22 @@ const fechaFin = ref('')
 const tratamientoOriginal = ref({ activo: true, fechaInicio: '', fechaFin: '' })
 const guardandoTratamiento = ref(false)
 const showInforme = ref(false)
+
+// --- Posología ---
+const posologia = ref(null)
+const posologiaOriginal = ref(null)
+const guardandoPosologia = ref(false)
+const posologiaGuardada = ref(false)
+
+const tienePosologia = computed(() => !!medicamento.value?.posologia)
+
+// Comparación campo a campo: el orden de claves del objeto guardado puede variar
+const posologiaCambiada = computed(() => {
+  const a = posologia.value
+  const b = posologiaOriginal.value
+  if (!a || !b) return a !== b
+  return ['dosis', 'frecuencia', 'duracion', 'notas'].some(k => (a[k] || null) !== (b[k] || null))
+})
 const tratamientoGuardado = ref(false)
 
 const tratamientoCambiado = computed(() =>
@@ -565,9 +599,13 @@ onMounted(async () => {
   const restData = await getMedicamentoDetalle(medicamento.value.data.nregistro, uiStore.activeUserEsMascota)
   presentaciones.value = getPresentacionesPSum(restData)
   psum.value = presentaciones.value.length > 0
-  loaded.value = true
 
   hasApiKey.value = !!uiStore.apiKey
+
+  // El estado editable se prepara antes de mostrar la ficha, para que los
+  // formularios se monten ya con los valores guardados
+  posologia.value = medicamento.value.posologia || null
+  posologiaOriginal.value = medicamento.value.posologia || null
 
   tratamientoActivo.value = medicamento.value.activo !== false
   fechaInicio.value = toDateInput(medicamento.value.fechaInicio)
@@ -577,6 +615,8 @@ onMounted(async () => {
     fechaInicio: fechaInicio.value,
     fechaFin: fechaFin.value,
   }
+
+  loaded.value = true
 
   const saved = await getInteraccionByMedId(medId, medicamento.value?.name)
   if (saved) {
@@ -599,6 +639,34 @@ onMounted(async () => {
 function toDateInput(iso) {
   if (!iso) return ''
   return String(iso).slice(0, 10)
+}
+
+async function guardarPosologia() {
+  guardandoPosologia.value = true
+  posologiaGuardada.value = false
+  try {
+    await updatePosologia(Number(route.params.id), posologia.value)
+    medicamento.value.posologia = posologia.value
+    posologiaOriginal.value = posologia.value
+    posologiaGuardada.value = true
+  } catch (e) {
+    logError('ui', e, { operacion: 'guardar-posologia', medId: route.params.id })
+  }
+  guardandoPosologia.value = false
+}
+
+async function borrarPosologia() {
+  posologia.value = null
+  await guardarPosologia()
+}
+
+async function recargarConsultas() {
+  const consultas = await getPosologiaConsultas(medicamento.value?.name)
+  posologiaConsultas.value = consultas.map(c => {
+    let parsed = {}
+    try { parsed = JSON.parse(c.resultado) } catch { /* ignore */ }
+    return { ...c, parsed }
+  })
 }
 
 async function guardarTratamiento() {

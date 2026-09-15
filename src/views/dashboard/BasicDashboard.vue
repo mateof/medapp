@@ -755,6 +755,17 @@ const motivosDesactualizado = computed(() => {
     motivos.push('Ya no tomas alguno de los medicamentos analizados.')
   }
 
+  // La pauta entra en el prompt: si ha cambiado, el análisis ya no refleja la realidad
+  const fechaAnalisis = latestInteraccion.value.fecha
+  const editados = allMeds.value.filter(m =>
+    m.activo !== false && m.dateupd && m.dateupd > fechaAnalisis && analizados.has(m.id)
+  )
+  if (editados.length > 0) {
+    motivos.push(editados.length === 1
+      ? `Has cambiado los datos de ${editados[0].name} desde entonces.`
+      : `Has cambiado los datos de ${editados.length} medicamentos desde entonces.`)
+  }
+
   const ai = latestDetalle.value?._ai
   if (ai) {
     if (ai.provider !== uiStore.aiProvider) {

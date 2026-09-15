@@ -82,6 +82,31 @@ export async function getMedicamentosActivos() {
 }
 
 /**
+ * Actualiza la posología prescrita de un medicamento ya guardado.
+ * `posologia` es null si se borra la pauta.
+ */
+export async function updatePosologia(id, posologia) {
+    const med = await db.medicamentos.get(id);
+    if (!med) return;
+
+    const plain = posologia ? JSON.parse(JSON.stringify(posologia)) : null;
+    await db.medicamentos.update(id, {
+        posologia: plain,
+        dateupd: new Date().toISOString()
+    });
+
+    const tenia = !!med.posologia;
+    await addActividad({
+        tipo: 'posologia_updated',
+        medId: id,
+        medName: med.name,
+        detalle: plain
+            ? `${tenia ? 'Pauta modificada' : 'Pauta añadida'}: ${med.name}`
+            : `Pauta eliminada: ${med.name}`
+    });
+}
+
+/**
  * Actualiza el estado del tratamiento de un medicamento.
  */
 export async function updateTratamiento(id, { activo, fechaInicio, fechaFin }) {
