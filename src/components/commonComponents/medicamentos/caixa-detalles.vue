@@ -355,6 +355,7 @@ import { useUiStore } from '@/stores/ui'
 import { getMedicamentoDetalle } from '@/services/http/http'
 import { getDocumentsFromDrug, getPresentacionesPSum } from '@/services/data/dataHelpers'
 import { analizarBotiquin } from '@/services/ai/ai'
+import { logError } from '@/services/logs/logger'
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 
 const route = useRoute()
@@ -499,6 +500,7 @@ async function runInteractionCheck() {
     const { resultado } = await analizarBotiquin(uiStore.apiKey)
     interaccionResult.value = resultado
   } catch (e) {
+    if (!e.registrado) logError('ui', e, { operacion: 'analizar-botiquin', vista: 'detalle-medicamento' })
     interaccionResult.value = {
       severidad: 'ninguna',
       resumen: `Error: ${e.message || 'No se pudo comprobar'}`,

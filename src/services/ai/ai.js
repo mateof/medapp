@@ -8,6 +8,8 @@ import { getUserProfile } from '@/services/storage/users'
 import { getProvider } from './providers'
 import { buildPrompt, buildPosologiaPrompt } from './prompt'
 import { fetchProspectos, fetchProspectosPdf, calcMaxCharsPerProspecto } from './gemini'
+import { llamarModelo } from './errors'
+import { logError, logInfo } from '@/services/logs/logger'
 import * as geminiProvider from './gemini'
 import * as openaiProvider from './openai'
 import * as anthropicProvider from './anthropic'
@@ -65,7 +67,18 @@ export async function checkInteracciones(apiKey, medicamentos, enfermedades = []
 
   const prompt = buildPrompt(medicamentos, enfermedades, prospectos, perfil)
 
-  const result = await mod.generateJson(apiKey, prompt, model, provider)
+  const result = await llamarModelo(
+    () => mod.generateJson(apiKey, prompt, model, provider),
+    {
+      operacion: 'interacciones',
+      provider: provider.id,
+      providerName: provider.name,
+      model,
+      medicamentos: medicamentos.length,
+      prospectos: prospectos.length,
+      promptChars: prompt.length,
+    }
+  )
 
   // Añadir metadata del proveedor/modelo al resultado
   result._ai = {
@@ -90,13 +103,25 @@ export async function analizarBotiquin(apiKey) {
 
   const resultado = await checkInteracciones(apiKey, medicamentos, enfermedades)
 
-  await saveInteraccion({
-    medIds: medicamentos.map(m => m.id),
-    medNames: medicamentos.map(m => m.name),
+  try {
+    await saveInteraccion({
+      medIds: medicamentos.map(m => m.id),
+      medNames: medicamentos.map(m => m.name),
+      severidad: resultado.severidad,
+      resumen: resultado.resumen,
+      detalle: JSON.stringify(resultado),
+      enfermedades,
+    })
+  } catch (e) {
+    await logError('db', e, { operacion: 'guardar-interaccion', medicamentos: medicamentos.length })
+    throw e
+  }
+
+  await logInfo('ia', 'Análisis de interacciones completado', {
+    medicamentos: medicamentos.length,
     severidad: resultado.severidad,
-    resumen: resultado.resumen,
-    detalle: JSON.stringify(resultado),
-    enfermedades,
+    provider: resultado._ai?.provider,
+    model: resultado._ai?.model,
   })
 
   return { resultado, medicamentos, enfermedades }
@@ -122,7 +147,18 @@ export async function consultarPosologia(apiKey, medicamento) {
 
   const prompt = buildPosologiaPrompt(medicamento, prospectos, perfil)
 
-  const result = await mod.generateJson(apiKey, prompt, model, provider)
+  const result = await llamarModelo(
+    () => mod.generateJson(apiKey, prompt, model, provider),
+    {
+      operacion: 'posologia',
+      provider: provider.id,
+      providerName: provider.name,
+      model,
+      medicamento: medicamento?.nombre || medicamento?.name || null,
+      prospectos: prospectos.length,
+      promptChars: prompt.length,
+    }
+  )
 
   result._ai = {
     provider: provider.id,

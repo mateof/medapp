@@ -585,6 +585,7 @@ import InteraccionDetailDialog from '@/components/commonComponents/medicamentos/
 import interaccionesView from '@/components/commonComponents/medicamentos/interacciones.vue'
 import dialogo from '@/components/commonComponents/modals/dialog.vue'
 import { analizarBotiquin } from '@/services/ai/ai'
+import { logError } from '@/services/logs/logger'
 import { getProvider } from '@/services/ai/providers'
 import { useUiStore } from '@/stores/ui'
 
@@ -765,6 +766,7 @@ async function ejecutarAnalisis() {
     await loadData()
   } catch (e) {
     analisisError.value = e.message || 'No se pudo completar el análisis'
+    if (!e.registrado) logError('ui', e, { operacion: 'analizar-botiquin', vista: 'resumen' })
   }
   analizando.value = false
 }

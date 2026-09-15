@@ -102,4 +102,13 @@ db.version(7).stores({
   })
 });
 
+db.version(8).stores({
+  usuarios: '++id, nombre, createdAt, esMascota',
+  medicamentos: '++id, name, data, datos, nregistro, *enfermedades, *sintomas, dateins, dateupd, syncstate, syncdate, userId',
+  actividad: '++id, tipo, fecha, medId, medName, userId',
+  settings: 'key',
+  interacciones: '++id, fecha, severidad, userId',
+  logs: '++id, fecha, nivel, scope'
+});
+
 db.open();

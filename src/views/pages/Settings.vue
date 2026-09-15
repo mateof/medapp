@@ -292,6 +292,68 @@
               Sin proxy configurado. Las interacciones se analizarán sin información de prospectos.
             </v-alert>
 
+            <v-divider class="my-6" />
+
+            <!-- REGISTRO DE ERRORES -->
+            <h3 class="text-h6 mb-4">
+              <v-icon class="mr-1">mdi-bug-outline</v-icon>
+              Registro de errores
+            </h3>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              Últimos fallos registrados por la app (consultas a la IA, descarga de prospectos y errores internos).
+              Se guardan solo en este dispositivo y nunca incluyen tu API key. Copia el registro si necesitas reportar un problema.
+            </p>
+
+            <div class="d-flex align-center ga-2 flex-wrap mb-4">
+              <v-chip-group v-model="logFilter" mandatory selected-class="text-primary">
+                <v-chip value="todos" size="small" variant="outlined">Todos ({{ logs.length }})</v-chip>
+                <v-chip value="error" size="small" variant="outlined" color="error">Errores ({{ countByLevel('error') }})</v-chip>
+                <v-chip value="warn" size="small" variant="outlined" color="warning">Avisos ({{ countByLevel('warn') }})</v-chip>
+              </v-chip-group>
+              <v-spacer />
+              <v-btn size="small" variant="text" icon="mdi-refresh" @click="loadLogs" :loading="loadingLogs" />
+            </div>
+
+            <v-alert v-if="logs.length === 0" type="success" variant="tonal" density="compact" class="mb-4">
+              No hay errores registrados.
+            </v-alert>
+
+            <template v-else>
+              <v-expansion-panels v-if="filteredLogs.length > 0" variant="accordion" class="mb-4">
+                <v-expansion-panel v-for="log in filteredLogs" :key="log.id">
+                  <v-expansion-panel-title>
+                    <div class="d-flex align-center ga-2 flex-wrap">
+                      <v-chip :color="nivelColor(log.nivel)" size="x-small" variant="flat">{{ log.nivel }}</v-chip>
+                      <v-chip size="x-small" variant="outlined">{{ log.scope }}</v-chip>
+                      <span class="text-body-2">{{ log.mensaje }}</span>
+                    </div>
+                  </v-expansion-panel-title>
+                  <v-expansion-panel-text>
+                    <div class="text-caption text-medium-emphasis mb-2">
+                      {{ formatLogDate(log.fecha) }} · MedApp {{ log.version }}
+                    </div>
+                    <pre v-if="log.contexto" class="log-pre mb-2">{{ JSON.stringify(log.contexto, null, 2) }}</pre>
+                    <pre v-if="log.detalle" class="log-pre">{{ log.detalle }}</pre>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+              <v-alert v-else type="info" variant="tonal" density="compact" class="mb-4">
+                No hay registros de este tipo.
+              </v-alert>
+
+              <div class="d-flex align-center ga-3 flex-wrap">
+                <v-btn color="primary" variant="outlined" prepend-icon="mdi-content-copy" @click="copyLogs">
+                  Copiar registro
+                </v-btn>
+                <v-btn variant="outlined" prepend-icon="mdi-download" @click="downloadLogs">
+                  Descargar .txt
+                </v-btn>
+                <v-btn variant="outlined" color="error" prepend-icon="mdi-delete" @click="confirmClearLogs = true">
+                  Vaciar
+                </v-btn>
+              </div>
+            </template>
+
           </v-card-text>
         </v-card>
       </v-col>
@@ -300,6 +362,30 @@
     <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="3000" location="top">
       {{ snackbarText }}
     </v-snackbar>
+
+    <dialogo
+      :showDialog="confirmClearLogs"
+      :title="'Vaciar registro'"
+      :type="'confirm'"
+      :texto="'Se borrarán todos los errores registrados en este dispositivo. No afecta a tus medicamentos ni a tus análisis.'"
+      @cancel="confirmClearLogs = false"
+      @accept="doClearLogs()"
+    />
+
+    <v-dialog v-model="showLogsText" max-width="900">
+      <v-card>
+        <v-card-title class="text-h6">Registro de errores</v-card-title>
+        <v-card-text>
+          <p class="text-body-2 text-medium-emphasis mb-2">
+            No se pudo copiar automáticamente. Selecciona el texto y cópialo a mano.
+          </p>
+          <v-textarea :model-value="logsText" rows="16" variant="outlined" readonly class="log-textarea" />
+        </v-card-text>
+        <v-card-actions class="justify-end">
+          <v-btn variant="text" @click="showLogsText = false">Cerrar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -311,6 +397,8 @@ import { getProviderList, getProvider } from '@/services/ai/providers'
 import { encrypt, decrypt as decryptKey } from '@/services/crypto'
 import { useUiStore } from '@/stores/ui'
 import { getCorsProxyUrl, setCorsProxyUrl, getStringUrl } from '@/services/http/http'
+import { getLogs, clearLogs, formatLogs } from '@/services/logs/logger'
+import dialogo from '@/components/commonComponents/modals/dialog.vue'
 
 const uiStore = useUiStore()
 
@@ -411,6 +499,8 @@ onMounted(async () => {
 
   // Cargar API key
   await loadEncryptedKey()
+
+  await loadLogs()
 })
 
 // Cuando se cambia de proveedor, recargar config
@@ -666,9 +756,99 @@ async function testProxy() {
   testingProxy.value = false
 }
 
+// --- Registro de errores ---
+const logs = ref([])
+const loadingLogs = ref(false)
+const logFilter = ref('todos')
+const confirmClearLogs = ref(false)
+const showLogsText = ref(false)
+const logsText = ref('')
+
+const filteredLogs = computed(() => {
+  if (logFilter.value === 'todos') return logs.value
+  return logs.value.filter(l => l.nivel === logFilter.value)
+})
+
+function countByLevel(nivel) {
+  return logs.value.filter(l => l.nivel === nivel).length
+}
+
+function nivelColor(nivel) {
+  switch (nivel) {
+    case 'error': return 'error'
+    case 'warn': return 'warning'
+    default: return 'info'
+  }
+}
+
+function formatLogDate(iso) {
+  try {
+    return new Date(iso).toLocaleString('es-ES', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })
+  } catch {
+    return iso
+  }
+}
+
+async function loadLogs() {
+  loadingLogs.value = true
+  logs.value = await getLogs()
+  loadingLogs.value = false
+}
+
+async function copyLogs() {
+  const texto = formatLogs(filteredLogs.value)
+  try {
+    await navigator.clipboard.writeText(texto)
+    showSnack('Registro copiado al portapapeles', 'success')
+  } catch {
+    // Sin permiso de portapapeles (o contexto no seguro): lo mostramos para copiar a mano
+    logsText.value = texto
+    showLogsText.value = true
+  }
+}
+
+function downloadLogs() {
+  const texto = formatLogs(filteredLogs.value)
+  const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `medapp-logs-${new Date().toISOString().slice(0, 10)}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function doClearLogs() {
+  confirmClearLogs.value = false
+  await clearLogs()
+  await loadLogs()
+  showSnack('Registro vaciado', 'success')
+}
+
 function showSnack(text, color) {
   snackbarText.value = text
   snackbarColor.value = color
   snackbar.value = true
 }
 </script>
+
+<style lang="scss" scoped>
+.log-pre {
+  background: rgba(127, 127, 127, 0.12);
+  border-radius: 4px;
+  padding: 8px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.log-textarea :deep(textarea) {
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+</style>

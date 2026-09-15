@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getStringUrl, resolveCimaUrl, resolveCimaVetUrl } from '../http/http'
+import { logError } from '@/services/logs/logger'
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
 
 GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
@@ -115,8 +116,13 @@ export async function fetchProspectos(medicamentos, maxChars = 4000) {
             const html = await getStringUrl(url)
             const texto = stripHtml(html).slice(0, maxChars)
             prospectos.push({ nombre: med.name || med.data?.nombre, texto })
-        } catch {
-            // Si falla la descarga, continuamos sin este prospecto
+        } catch (e) {
+            // Continuamos sin este prospecto, pero dejamos constancia:
+            // el análisis se hará con menos información de la esperada.
+            logError('cima', e, {
+                operacion: 'prospecto-html',
+                medicamento: med.name || med.data?.nombre || null,
+            })
         }
     }
     return prospectos
@@ -143,8 +149,12 @@ export async function fetchProspectosPdf(medicamentos, maxChars = 4000) {
             if (texto) {
                 prospectos.push({ nombre: med.name || med.data?.nombre, texto: texto.slice(0, maxChars) })
             }
-        } catch {
-            // Si falla la descarga o extracción, continuamos sin este prospecto
+        } catch (e) {
+            // Continuamos sin este prospecto, pero dejamos constancia.
+            logError('cima', e, {
+                operacion: 'prospecto-pdf',
+                medicamento: med.name || med.data?.nombre || null,
+            })
         }
     }
     return prospectos
